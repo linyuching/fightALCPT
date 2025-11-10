@@ -75,7 +75,7 @@
 
         <!-- Screen 0: Loading (NEW) -->
         <div id="loading-screen" class="screen active-screen flex-col items-center text-center p-6 sm:p-8 bg-gray-800 rounded-2xl shadow-2xl">
-            <h1 class="text-3xl sm:text-4xl font-bold text-yellow-400 mb-6">ALCPT 自我訓練</h1>
+            <h1 class="text-3xl sm:text-4xl font-bold text-yellow-400 mb-6">ALCPT 英語能力測驗</h1>
             <div class="spinner mb-4"></div>
             <p id="loading-text" class="text-base sm:text-lg text-gray-300">
                 正在載入並自動登入...
@@ -84,7 +84,7 @@
 
         <!-- Screen 1: Welcome -->
         <div id="welcome-screen" class="screen flex-col items-center text-center p-6 sm:p-8 bg-gray-800 rounded-2xl shadow-2xl">
-            <h1 class="text-3xl sm:text-4xl font-bold text-yellow-400 mb-4">ALCPT 自我訓練</h1>
+            <h1 class="text-3xl sm:text-4xl font-bold text-yellow-400 mb-4">ALCPT 英語能力測驗</h1>
             <p class="text-base sm:text-lg text-gray-300 mb-8 leading-relaxed">
                 請選擇一個測驗題庫 (題庫一: 30題, 其餘: 20題)<br>每個題庫必須達到 80% 才算通過。
             </p>
@@ -234,6 +234,7 @@
         let firestoreUnsubscribe = null; // 用於取消訂閱監聽器
 
         // --- 核心 Firebase 初始化 (MANDATORY) ---
+        // (FIXED: 恢復了正確的 Firebase 初始化函數)
         async function initializeAppFirebase() {
             try {
                 // 1. 取得 Canvas 環境提供的設定
@@ -342,6 +343,7 @@
         }
 
         // --- 更新版：切換收藏 (寫入/刪除 Firestore) ---
+        // (FIXED: 修正 docId 以移除斜線 "/")
         async function toggleFavoriteKeyword(kw, buttonEl) {
             if (!isAuthReady || !userId) {
                 console.error("Auth not ready. Cannot toggle favorite.");
@@ -349,8 +351,8 @@
             }
             
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            // FIX: Replace invalid characters (like '/') from the word before using it as a doc ID.
-            const docId = kw.word.replace(/[\/]/g, '_'); // 移除會造成路徑錯誤的斜線
+            // FIX: 替換 Firestore 文件 ID 中的斜線，因為 Firestore 不允許
+            const docId = kw.word.replace(/\//g, '_'); 
             const docRef = doc(db, 'artifacts', appId, 'users', userId, 'favorites', docId);
 
             const isCurrentlyFavorite = favoriteKeywords.some(favKw => favKw.word === kw.word);
@@ -403,7 +405,7 @@
             isAuthReady = false;
             userId = null;
             favoriteKeywords = [];
-            quizPassStatus = { quiz1: false, quiz2: false, quiz3: false }; // NEW: 重置通關狀態
+            quizPassStatus = { quiz1: false, quiz2: false, quiz3: false }; // 重置通關狀態
             
             // 3. 顯示載入畫面並重新認證
             showScreen('loading-screen');
@@ -411,239 +413,387 @@
             initializeAppFirebase(); // 重新執行登入流程
         }
 
-        // --- NEW ALCPT DATA ---
-        // 我無法存取真實的 ALCPT 歷屆試題，因此這裡提供了模擬的 ALCPT 題型，
-        // 包含詞彙、文法和模擬聽力腳本。
+        // --- 題庫資料 (DATA) ---
+        // (FIXED: 這是 alcptQuizBanks 變數的正確位置)
         const alcptQuizBanks = {
-            // --- 題庫 1: 詞彙 --- (20 題)
+            // --- 題庫 1: 詞彙 --- (30 題)
             'quiz1': [
-                { type: 'reading', difficulty: 1, question: "The soldier must ____ his orders immediately.", translation: "士兵必須立即____他的命令。", options: ["obey", "object", "offer", "open"], answer: 0, keywords: [
-                    { word: 'obey', translation: '服從', example: 'You must obey the rules.', example_translation: '你必須服從規則。' }
+                { type: 'reading', difficulty: 1, question: "The soldier must ____ his orders immediately.", translation: "士兵必須立即____他的命令。", options: ["obey", "object", "offer", "open"], answer: 0, all_keywords: [
+                    { word: 'obey', translation: '服從', example: 'You must obey the rules.', example_translation: '你必須服從規則。' },
+                    { word: 'object', translation: '反對 (v.); 物體 (n.)', example: 'He objected to the plan.', example_translation: '他反對這個計畫。' },
+                    { word: 'offer', translation: '提供', example: 'He offered me a job.', example_translation: '他提供給我一份工作。' },
+                    { word: 'open', translation: '打開', example: 'Please open the door.', example_translation: '請打開門。' }
                 ]},
-                { type: 'reading', difficulty: 1, question: "What is the ____ of this meeting? We need to know why we are here.", translation: "這次會議的____是什麼？我們需要知道我們為什麼在這裡。", options: ["purpose", "problem", "price", "permit"], answer: 0, keywords: [
-                    { word: 'purpose', translation: '目的', example: 'The purpose of the visit is to inspect the site.', example_translation: '這次訪問的目的是視察現場。' }
+                { type: 'reading', difficulty: 1, question: "What is the ____ of this meeting? We need to know why we are here.", translation: "這次會議的____是什麼？我們需要知道我們為什麼在這裡。", options: ["purpose", "problem", "price", "permit"], answer: 0, all_keywords: [
+                    { word: 'purpose', translation: '目的', example: 'The purpose of the visit is to inspect the site.', example_translation: '這次訪問的目的是視察現場。' },
+                    { word: 'problem', translation: '問題', example: 'We have a serious problem.', example_translation: '我們遇到一個嚴重的問題。' },
+                    { word: 'price', translation: '價格', example: 'What is the price of this car?', example_translation: '這輛車的價格是多少？' },
+                    { word: 'permit', translation: '許可證', example: 'You need a permit to park here.', example_translation: '在這裡停車你需要許可證。' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "The mechanic needs to ____ the engine to see what's wrong.", translation: "技工需要____引擎來查看出了什麼問題。", options: ["inspect", "inject", "invite", "invent"], answer: 0, keywords: [
-                    { word: 'inspect', translation: '檢查；視察', example: 'He inspected the vehicle for damage.', example_translation: '他檢查了車輛的損壞情況。' }
+                { type: 'reading', difficulty: 2, question: "The mechanic needs to ____ the engine to see what's wrong.", translation: "技工需要____引擎來查看出了什麼問題。", options: ["inspect", "inject", "invite", "invent"], answer: 0, all_keywords: [
+                    { word: 'inspect', translation: '檢查；視察', example: 'He inspected the vehicle for damage.', example_translation: '他檢查了車輛的損壞情況。' },
+                    { word: 'inject', translation: '注射', example: 'The doctor injected the vaccine.', example_translation: '醫生注射了疫苗。' },
+                    { word: 'invite', translation: '邀請', example: 'She invited me to the party.', example_translation: '她邀請我參加派對。' },
+                    { word: 'invent', translation: '發明', example: 'Thomas Edison invented the light bulb.', example_translation: '愛迪生發明了電燈泡。' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "This is a restricted area; ____ is not allowed.", translation: "這是管制區域；不允許____。", options: ["entry", "exit", "error", "effort"], answer: 0, keywords: [
-                    { word: 'entry', translation: '進入', example: 'Entry is forbidden.', example_translation: '禁止進入。' }
+                { type: 'reading', difficulty: 2, question: "This is a restricted area; ____ is not allowed.", translation: "這是管制區域；不允許____。", options: ["entry", "exit", "error", "effort"], answer: 0, all_keywords: [
+                    { word: 'entry', translation: '進入', example: 'Entry is forbidden.', example_translation: '禁止進入。' },
+                    { word: 'exit', translation: '出口', example: 'The emergency exit is over there.', example_translation: '緊急出口在那裡。' },
+                    { word: 'error', translation: '錯誤', example: 'There is an error in the calculation.', example_translation: '計算中有個錯誤。' },
+                    { word: 'effort', translation: '努力', example: 'He made a great effort to succeed.', example_translation: '他付出了極大的努力來取得成功。' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "The storm caused ____ damage to the base.", translation: "暴風雨對基地造成了____的損害。", options: ["considerable", "considerate", "constant", "conscious"], answer: 0, keywords: [
-                    { word: 'considerable', translation: '相當大的', example: 'The project requires a considerable amount of time.', example_translation: '這個計畫需要相當多的時間。' }
+                { type: 'reading', difficulty: 2, question: "The storm caused ____ damage to the base.", translation: "暴風雨對基地造成了____的損害。", options: ["considerable", "considerate", "constant", "conscious"], answer: 0, all_keywords: [
+                    { word: 'considerable', translation: '相當大的', example: 'The project requires a considerable amount of time.', example_translation: '這個計畫需要相當多的時間。' },
+                    { word: 'considerate', translation: '體貼的', example: 'He is very considerate of others.', example_translation: '他非常體貼他人。' },
+                    { word: 'constant', translation: '持續的', example: 'The machine makes a constant noise.', example_translation: '機器發出持續的噪音。' },
+                    { word: 'conscious', translation: '有意識的', example: 'He was conscious of the danger.', example_translation: '他意識到了危險。' }
                 ]},
-                { type: 'reading', difficulty: 1, question: "You need a special ____ to enter this building.", translation: "你需要特別的____才能進入這棟大樓。", options: ["permit", "person", "pencil", "party"], answer: 0, keywords: [
-                    { word: 'permit', translation: '許可證', example: 'Do you have a parking permit?', example_translation: '你有停車許可證嗎？' }
+                { type: 'reading', difficulty: 1, question: "You need a special ____ to enter this building.", translation: "你需要特別的____才能進入這棟大樓。", options: ["permit", "person", "pencil", "party"], answer: 0, all_keywords: [
+                    { word: 'permit', translation: '許可證', example: 'Do you have a parking permit?', example_translation: '你有停車許可證嗎？' },
+                    { word: 'person', translation: '人', example: 'He is a very nice person.', example_translation: '他是個很好的人。' },
+                    { word: 'pencil', translation: '鉛筆', example: 'I need a pencil and paper.', example_translation: '我需要鉛筆和紙。' },
+                    { word: 'party', translation: '派對；政黨', example: 'Are you going to the party?', example_translation: '你會去參加派對嗎？' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "The mission was successful ____ the bad weather.", translation: "____天氣惡劣，任務還是成功了。", options: ["in spite of", "because of", "instead of", "thanks to"], answer: 0, keywords: [
-                    { word: 'in spite of', translation: '儘管', example: 'He went out in spite of the rain.', example_translation: '儘管下雨，他還是出去了。' }
+                { type: 'reading', difficulty: 2, question: "The mission was successful ____ the bad weather.", translation: "____天氣惡劣，任務還是成功了。", options: ["in spite of", "because of", "instead of", "thanks to"], answer: 0, all_keywords: [
+                    { word: 'in spite of', translation: '儘管', example: 'He went out in spite of the rain.', example_translation: '儘管下雨，他還是出去了。' },
+                    { word: 'because of', translation: '因為', example: 'The game was canceled because of the rain.', example_translation: '因為下雨，比賽被取消了。' },
+                    { word: 'instead of', translation: '代替', example: 'I\'ll have tea instead of coffee.', example_translation: '我要喝茶代替咖啡。' },
+                    { word: 'thanks to', translation: '幸虧', example: 'Thanks to your help, we succeeded.', example_translation: '幸虧有你的幫助，我們成功了。' }
                 ]},
-                { type: 'reading', difficulty: 3, question: "All personnel must ____ in the assembly area at 0800 hours.", translation: "所有人員必須在 0800 時在集合區____。", options: ["assemble", "assign", "assist", "assume"], answer: 0, keywords: [
-                    { word: 'assemble', translation: '集合', example: 'The troops assembled on the parade ground.', example_translation: '部隊在閱兵場集合。' }
+                { type: 'reading', difficulty: 3, question: "All personnel must ____ in the assembly area at 0800 hours.", translation: "所有人員必須在 0800 時在集合區____。", options: ["assemble", "assign", "assist", "assume"], answer: 0, all_keywords: [
+                    { word: 'assemble', translation: '集合', example: 'The troops assembled on the parade ground.', example_translation: '部隊在閱兵場集合。' },
+                    { word: 'assign', translation: '分配；指派', example: 'The teacher assigned homework.', example_translation: '老師指派了作業。' },
+                    { word: 'assist', translation: '協助', example: 'Can I assist you?', example_translation: '我能協助您嗎？' },
+                    { word: 'assume', translation: '假設；承擔', example: 'I assume you are right.', example_translation: '我假設你是對的。' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "A good leader should be able to ____ his team.", translation: "一個好的領導者應該能夠____他的團隊。", options: ["motivate", "mention", "measure", "mix"], answer: 0, keywords: [
-                    { word: 'motivate', translation: '激勵', example: 'The coach motivated the players.', example_translation: '教練激勵了球員。' }
+                { type: 'reading', difficulty: 2, question: "A good leader should be able to ____ his team.", translation: "一個好的領導者應該能夠____他的團隊。", options: ["motivate", "mention", "measure", "mix"], answer: 0, all_keywords: [
+                    { word: 'motivate', translation: '激勵', example: 'The coach motivated the players.', example_translation: '教練激勵了球員。' },
+                    { word: 'mention', translation: '提及', example: 'Did he mention my name?', example_translation: '他有提到我的名字嗎？' },
+                    { word: 'measure', translation: '測量', example: 'We must measure the room.', example_translation: '我們必須測量這個房間。' },
+                    { word: 'mix', translation: '混合', example: 'Mix the ingredients well.', example_translation: '將原料混合均勻。' }
                 ]},
-                { type: 'reading', difficulty: 1, question: "A ____ is a large, heavy vehicle used by the military.", translation: "____是一種軍用的大型重型車輛。", options: ["tank", "task", "tape", "tax"], answer: 0, keywords: [
-                    { word: 'tank', translation: '坦克；水箱', example: 'The tank moved across the field.', example_translation: '坦克駛過田野。' }
+                { type: 'reading', difficulty: 1, question: "A ____ is a large, heavy vehicle used by the military.", translation: "____是一種軍用的大型重型車輛。", options: ["tank", "task", "tape", "tax"], answer: 0, all_keywords: [
+                    { word: 'tank', translation: '坦克；水箱', example: 'The tank moved across the field.', example_translation: '坦克駛過田野。' },
+                    { word: 'task', translation: '任務', example: 'I have a difficult task.', example_translation: '我有一項艱鉅的任務。' },
+                    { word: 'tape', translation: '膠帶；錄音帶', example: 'I need some tape.', example_translation: '我需要一些膠帶。' },
+                    { word: 'tax', translation: '稅', example: 'We have to pay taxes.', example_translation: '我們必須繳稅。' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "It is ____ to wear your seatbelt in a moving car.", translation: "在行駛的汽車上繫安全帶是____的。", options: ["mandatory", "manual", "modest", "major"], answer: 0, keywords: [
-                    { word: 'mandatory', translation: '強制的；義務的', example: 'Attendance is mandatory.', example_translation: '出席是強制的。' }
+                { type: 'reading', difficulty: 2, question: "It is ____ to wear your seatbelt in a moving car.", translation: "在行駛的汽車上繫安全帶是____的。", options: ["mandatory", "manual", "modest", "major"], answer: 0, all_keywords: [
+                    { word: 'mandatory', translation: '強制的；義務的', example: 'Attendance is mandatory.', example_translation: '出席是強制的。' },
+                    { word: 'manual', translation: '手動的；手冊', example: 'This is a manual transmission car.', example_translation: '這是一台手排車。' },
+                    { word: 'modest', translation: '謙虛的', example: 'He is very modest about his success.', example_translation: '他對自己的成功非常謙虛。' },
+                    { word: 'major', translation: '主要的；專業', example: 'What is your major?', example_translation: '你的專業是什麼？' }
                 ]},
-                { type: 'reading', difficulty: 3, question: "The sergeant gave a ____ description of the suspect.", translation: "中士對嫌疑人進行了____的描述。", options: ["vivid", "vague", "various", "virtual"], answer: 0, keywords: [
+                { type: 'reading', difficulty: 3, question: "The sergeant gave a ____ description of the suspect.", translation: "中士對嫌疑人進行了____的描述。", options: ["vivid", "vague", "various", "virtual"], answer: 0, all_keywords: [
                     { word: 'vivid', translation: '生動的', example: 'He has a vivid imagination.', example_translation: '他有豐富的想像力。' },
-                    { word: 'vague', translation: '模糊的', example: 'His instructions were vague.', example_translation: '他的指示很模糊。' }
+                    { word: 'vague', translation: '模糊的', example: 'His instructions were vague.', example_translation: '他的指示很模糊。' },
+                    { word: 'various', translation: '各式各樣的', example: 'There are various types of flowers.', example_translation: '有各式各樣的花。' },
+                    { word: 'virtual', translation: '虛擬的', example: 'Virtual reality is popular now.', example_translation: '虛擬實境現在很受歡迎。' }
                 ]},
-                { type: 'reading', difficulty: 1, question: "Please ____ the main gate at 0600.", translation: "請於 0600 時在正門____。", options: ["report to", "report on", "run into", "run out of"], answer: 0, keywords: [
-                    { word: 'report to', translation: '向...報到', example: 'Please report to Sergeant Miller.', example_translation: '請向米勒中士報到。' }
+                { type: 'reading', difficulty: 1, question: "Please ____ the main gate at 0600.", translation: "請於 0600 時在正門____。", options: ["report to", "report on", "run into", "run out of"], answer: 0, all_keywords: [
+                    { word: 'report to', translation: '向...報到', example: 'Please report to Sergeant Miller.', example_translation: '請向米勒中士報到。' },
+                    { word: 'report on', translation: '報導；報告(某事)', example: 'He will report on the incident.', example_translation: '他將報告這起事件。' },
+                    { word: 'run into', translation: '偶然遇見', example: 'I ran into an old friend today.', example_translation: '我今天巧遇一位老朋友。' },
+                    { word: 'run out of', translation: '用完', example: 'We are running out of milk.', example_translation: '我們的牛奶快喝完了。' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "The equipment is not working ____. It needs to be fixed.", translation: "設備運作不____。它需要修理。", options: ["properly", "partially", "privately", "previously"], answer: 0, keywords: [
-                    { word: 'properly', translation: '正確地；妥善地', example: 'Make sure the machine is working properly.', example_translation: '確保機器正常運作。' }
+                { type: 'reading', difficulty: 2, question: "The equipment is not working ____. It needs to be fixed.", translation: "設備運作不____。它需要修理。", options: ["properly", "partially", "privately", "previously"], answer: 0, all_keywords: [
+                    { word: 'properly', translation: '正確地；妥善地', example: 'Make sure the machine is working properly.', example_translation: '確保機器正常運作。' },
+                    { word: 'partially', translation: '部分地', example: 'The road is partially blocked.', example_translation: '道路被部分堵塞。' },
+                    { word: 'privately', translation: '私下地', example: 'He spoke to me privately.', example_translation: '他私下跟我說話。' },
+                    { word: 'previously', translation: '先前地', example: 'He was previously a soldier.', example_translation: '他先前是一名士兵。' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "We must ____ the enemy from advancing.", translation: "我們必須____敵人前進。", options: ["prevent", "protect", "promote", "provide"], answer: 0, keywords: [
-                    { word: 'prevent', translation: '阻止；預防', example: 'We must prevent the fire from spreading.', example_translation: '我們必須防止火勢蔓延。' }
+                { type: 'reading', difficulty: 2, question: "We must ____ the enemy from advancing.", translation: "我們必須____敵人前進。", options: ["prevent", "protect", "promote", "provide"], answer: 0, all_keywords: [
+                    { word: 'prevent', translation: '阻止；預防', example: 'We must prevent the fire from spreading.', example_translation: '我們必須防止火勢蔓延。' },
+                    { word: 'protect', translation: '保護', example: 'You must protect your skin from the sun.', example_translation: '你必須保護皮膚免受日曬。' },
+                    { word: 'promote', translation: '促進；晉升', example: 'He was promoted to Captain.', example_translation: '他被晉升為上尉。' },
+                    { word: 'provide', translation: '提供', example: 'We will provide food and water.', example_translation: '我們將提供食物和水。' }
                 ]},
-                { type: 'reading', difficulty: 3, question: "The operation was a ____ failure; everything went wrong.", translation: "這次行動是一次____的失敗；一切都出了差錯。", options: ["complete", "complex", "common", "calm"], answer: 0, keywords: [
-                    { word: 'complete', translation: '完全的', example: 'It was a complete surprise.', example_translation: '這真是個十足的驚喜。' }
+                { type: 'reading', difficulty: 3, question: "The operation was a ____ failure; everything went wrong.", translation: "這次行動是一次____的失敗；一切都出了差錯。", options: ["complete", "complex", "common", "calm"], answer: 0, all_keywords: [
+                    { word: 'complete', translation: '完全的', example: 'It was a complete surprise.', example_translation: '這真是個十足的驚喜。' },
+                    { word: 'complex', translation: '複雜的', example: 'The problem is very complex.', example_translation: '這個問題非常複雜。' },
+                    { word: 'common', translation: '常見的；共同的', example: 'This is a common mistake.', example_translation: '這是一個常見的錯誤。' },
+                    { word: 'calm', translation: '冷靜的', example: 'Stay calm in an emergency.', example_translation: '在緊急情況下保持冷靜。' }
                 ]},
-                { type: 'reading', difficulty: 1, question: "What is your ____ of rank?", translation: "你的____是什麼？", options: ["grade", "grass", "glue", "gas"], answer: 0, keywords: [
-                    { word: 'grade', translation: '等級；階級', example: 'He is a high-grade officer.', example_translation: '他是一名高級軍官。' }
+                { type: 'reading', difficulty: 1, question: "What is your ____ of rank?", translation: "你的____是什麼？", options: ["grade", "grass", "glue", "gas"], answer: 0, all_keywords: [
+                    { word: 'grade', translation: '等級；階級', example: 'He is a high-grade officer.', example_translation: '他是一名高級軍官。' },
+                    { word: 'grass', translation: '草', example: 'The grass is green.', example_translation: '草是綠色的。' },
+                    { word: 'glue', translation: '膠水', example: 'I need some glue to fix this.', example_translation: '我需要一些膠水來修這個。' },
+                    { word: 'gas', translation: '汽油；氣體', example: 'The car is out of gas.', example_translation: '車子沒油了。' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "The supplies will ____ tomorrow morning.", translation: "補給品將在明天早上____。", options: ["arrive", "achieve", "attack", "affect"], answer: 0, keywords: [
-                    { word: 'arrive', translation: '到達', example: 'The train will arrive at 10 AM.', example_translation: '火車將於上午 10 點到達。' }
+                { type: 'reading', difficulty: 2, question: "The supplies will ____ tomorrow morning.", translation: "補給品將在明天早上____。", options: ["arrive", "achieve", "attack", "affect"], answer: 0, all_keywords: [
+                    { word: 'arrive', translation: '到達', example: 'The train will arrive at 10 AM.', example_translation: '火車將於上午 10 點到達。' },
+                    { word: 'achieve', translation: '達成', example: 'He achieved his goal.', example_translation: '他達成了他的目標。' },
+                    { word: 'attack', translation: '攻擊', example: 'The enemy will attack at dawn.', example_translation: '敵人將在黎明時攻擊。' },
+                    { word: 'affect', translation: '影響', example: 'The weather will affect the plan.', example_translation: '天氣將影響計畫。' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "The new rules will ____ all military personnel.", translation: "新規定將____所有軍事人員。", options: ["apply to", "apply for", "ask for", "account for"], answer: 0, keywords: [
-                    { word: 'apply to', translation: '適用於', example: 'The rule applies to everyone.', example_translation: '這規則適用於所有人。' }
+                { type: 'reading', difficulty: 2, question: "The new rules will ____ all military personnel.", translation: "新規定將____所有軍事人員。", options: ["apply to", "apply for", "ask for", "account for"], answer: 0, all_keywords: [
+                    { word: 'apply to', translation: '適用於', example: 'The rule applies to everyone.', example_translation: '這規則適用於所有人。' },
+                    { word: 'apply for', translation: '申請', example: 'He will apply for a new job.', example_translation: '他將申請一份新工作。' },
+                    { word: 'ask for', translation: '請求', example: 'He asked for help.', example_translation: '他請求協助。' },
+                    { word: 'account for', translation: '解釋；佔...', example: 'This accounts for 10% of the budget.', example_translation: '這佔了預算的 10%。' }
                 ]},
-                { type: 'reading', difficulty: 3, question: "The mission was ____ due to a security breach.", translation: "由於安全漏洞，任務被____了。", options: ["terminated", "translated", "transferred", "transformed"], answer: 0, keywords: [
-                    { word: 'terminated', translation: '終止 (v. 過去式)', example: 'The contract was terminated.', example_translation: '合約被終止了。' }
+                { type: 'reading', difficulty: 3, question: "The mission was ____ due to a security breach.", translation: "由於安全漏洞，任務被____了。", options: ["terminated", "translated", "transferred", "transformed"], answer: 0, all_keywords: [
+                    { word: 'terminated', translation: '終止 (v. 過去式)', example: 'The contract was terminated.', example_translation: '合約被終止了。' },
+                    { word: 'translated', translation: '翻譯 (v. 過去式)', example: 'He translated the book into English.', example_translation: '他把這本書翻譯成英文。' },
+                    { word: 'transferred', translation: '轉移；調動 (v. 過去式)', example: 'He was transferred to a new base.', example_translation: '他被調到一個新基地。' },
+                    { word: 'transformed', translation: '改變；轉換 (v. 過去式)', example: 'The city has transformed.', example_translation: '這座城市已經改頭換面了。' }
                 ]},
-                // --- NEW 10 Vocab/Phrasal Questions Added ---
-                { type: 'reading', difficulty: 2, question: "The commander will ____ the soldier's complaint.", translation: "指揮官將會____這名士兵的投訴。", options: ["look into", "look over", "look up to", "look down on"], answer: 0, keywords: [
-                    { word: 'look into', translation: '調查', example: 'We will look into the matter.', example_translation: '我們會調查這件事。' }
+                // --- 10 Vocab/Phrasal Questions Added ---
+                { type: 'reading', difficulty: 2, question: "The commander will ____ the soldier's complaint.", translation: "指揮官將會____這名士兵的投訴。", options: ["look into", "look over", "look up to", "look down on"], answer: 0, all_keywords: [
+                    { word: 'look into', translation: '調查', example: 'We will look into the matter.', example_translation: '我們會調查這件事。' },
+                    { word: 'look over', translation: '快速瀏覽', example: 'Please look over this report.', example_translation: '請快速看一下這份報告。' },
+                    { word: 'look up to', translation: '尊敬', example: 'He looks up to his father.', example_translation: '他尊敬他的父親。' },
+                    { word: 'look down on', translation: '輕視', example: 'You should not look down on anyone.', example_translation: '你不應該輕視任何人。' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "They had to ____ the training exercise due to the storm.", translation: "由於暴風雨，他們不得不____訓練演習。", options: ["call off", "call on", "call for", "call out"], answer: 0, keywords: [
-                    { word: 'call off', translation: '取消', example: 'They called off the meeting.', example_translation: '他們取消了會議。' }
+                { type: 'reading', difficulty: 2, question: "They had to ____ the training exercise due to the storm.", translation: "由於暴風雨，他們不得不____訓練演習。", options: ["call off", "call on", "call for", "call out"], answer: 0, all_keywords: [
+                    { word: 'call off', translation: '取消', example: 'They called off the meeting.', example_translation: '他們取消了會議。' },
+                    { word: 'call on', translation: '拜訪；呼籲', example: 'He called on me yesterday.', example_translation: '他昨天拜訪了我。' },
+                    { word: 'call for', translation: '要求；需要', example: 'The job calls for patience.', example_translation: '這份工作需要耐心。' },
+                    { word: 'call out', translation: '大喊；召集', example: 'He called out my name.', example_translation: '他大喊我的名字。' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "I cannot ____ this noise any longer.", translation: "我再也無法____這種噪音了。", options: ["put up with", "put on", "put off", "put out"], answer: 0, keywords: [
-                    { word: 'put up with', translation: '忍受', example: 'I can\'t put up with his attitude.', example_translation: '我無法忍受他的態度。' }
+                { type: 'reading', difficulty: 2, question: "I cannot ____ this noise any longer.", translation: "我再也無法____這種噪音了。", options: ["put up with", "put on", "put off", "put out"], answer: 0, all_keywords: [
+                    { word: 'put up with', translation: '忍受', example: 'I can\'t put up with his attitude.', example_translation: '我無法忍受他的態度。' },
+                    { word: 'put on', translation: '穿上', example: 'Put on your jacket.', example_translation: '穿上你的夾克。' },
+                    { word: 'put off', translation: '延期', example: 'Don\'t put off your homework.', example_translation: '不要拖延你的作業。' },
+                    { word: 'put out', translation: '熄滅', example: 'Put out the fire.', example_translation: '熄滅火。' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "We need ____ equipment that won't break in the field.", translation: "我們需要不會在現場故障的____設備。", options: ["reliable", "reluctant", "relative", "religious"], answer: 0, keywords: [
-                    { word: 'reliable', translation: '可靠的', example: 'He is a reliable source of information.', example_translation: '他是個可靠的資訊來源。' }
+                { type: 'reading', difficulty: 2, question: "We need ____ equipment that won't break in the field.", translation: "我們需要不會在現場故障的____設備。", options: ["reliable", "reluctant", "relative", "religious"], answer: 0, all_keywords: [
+                    { word: 'reliable', translation: '可靠的', example: 'He is a reliable source of information.', example_translation: '他是個可靠的資訊來源。' },
+                    { word: 'reluctant', translation: '不情願的', example: 'I am reluctant to leave.', example_translation: '我不想離開。' },
+                    { word: 'relative', translation: '親戚；相對的', example: 'We visited some relatives.', example_translation: '我們拜訪了一些親戚。' },
+                    { word: 'religious', translation: '宗教的', example: 'He is a very religious person.', example_translation: '他是個非常虔誠的人。' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "The patrol is in danger of ____ ammunition.", translation: "巡邏隊有____彈藥的危險。", options: ["running out of", "running into", "running over", "running away"], answer: 0, keywords: [
-                    { word: 'run out of', translation: '用完', example: 'We are running out of time.', example_translation: '我們的時間快用完了。' }
+                { type: 'reading', difficulty: 2, question: "The patrol is in danger of ____ ammunition.", translation: "巡邏隊有____彈藥的危險。", options: ["running out of", "running into", "running over", "running away"], answer: 0, all_keywords: [
+                    { word: 'run out of', translation: '用完', example: 'We are running out of time.', example_translation: '我們的時間快用完了。' },
+                    { word: 'run into', translation: '偶然遇見', example: 'I ran into him at the store.', example_translation: '我在商店偶然遇見他。' },
+                    { word: 'run over', translation: '輾過', example: 'The car ran over a can.', example_translation: '車子輾過一個罐子。' },
+                    { word: 'run away', translation: '逃跑', example: 'The thief ran away.', example_translation: '小偷跑走了。' }
                 ]},
-                { type: 'reading', difficulty: 1, question: "The map must be ____ to be useful.", translation: "地圖必須____才有用。", options: ["accurate", "ancient", "anxious", "active"], answer: 0, keywords: [
-                    { word: 'accurate', translation: '精確的', example: 'The report is accurate.', example_translation: '這份報告是精確的。' }
+                { type: 'reading', difficulty: 1, question: "The map must be ____ to be useful.", translation: "地圖必須____才有用。", options: ["accurate", "ancient", "anxious", "active"], answer: 0, all_keywords: [
+                    { word: 'accurate', translation: '精確的', example: 'The report is accurate.', example_translation: '這份報告是精確的。' },
+                    { word: 'ancient', translation: '古老的', example: 'This is an ancient city.', example_translation: '這是一座古老的城市。' },
+                    { word: 'anxious', translation: '焦慮的', example: 'I am anxious about the test.', example_translation: '我對考試感到焦慮。' },
+                    { word: 'active', translation: '活躍的', example: 'He is a very active child.', example_translation: '他是個很活躍的孩子。' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "Our vehicle ____ in the middle of the desert.", translation: "我們的車輛在沙漠中央____了。", options: ["broke down", "broke into", "broke up", "broke out"], answer: 0, keywords: [
-                    { word: 'broke down', translation: '故障 (break down的過去式)', example: 'My car broke down.', example_translation: '我的車拋錨了。' }
+                { type: 'reading', difficulty: 2, question: "Our vehicle ____ in the middle of the desert.", translation: "我們的車輛在沙漠中央____了。", options: ["broke down", "broke into", "broke up", "broke out"], answer: 0, all_keywords: [
+                    { word: 'broke down', translation: '故障 (break down的過去式)', example: 'My car broke down.', example_translation: '我的車拋錨了。' },
+                    { word: 'broke into', translation: '闖入', example: 'Someone broke into my house.', example_translation: '有人闖入我的房子。' },
+                    { word: 'broke up', translation: '分手；解散', example: 'The band broke up last year.', example_translation: '那個樂團去年解散了。' },
+                    { word: 'broke out', translation: '爆發', example: 'A fire broke out in the building.', example_translation: '大樓爆發了火災。' }
                 ]},
-                { type: 'reading', difficulty: 1, question: "It is ____ that all personnel follow safety procedures.", translation: "所有人員遵守安全程序是____的。", options: ["essential", "expensive", "extra", "easy"], answer: 0, keywords: [
-                    { word: 'essential', translation: '必要的', example: 'Water is essential for life.', example_translation: '水是生命所必需的。' }
+                { type: 'reading', difficulty: 1, question: "It is ____ that all personnel follow safety procedures.", translation: "所有人員遵守安全程序是____的。", options: ["essential", "expensive", "extra", "easy"], answer: 0, all_keywords: [
+                    { word: 'essential', translation: '必要的', example: 'Water is essential for life.', example_translation: '水是生命所必需的。' },
+                    { word: 'expensive', translation: '昂貴的', example: 'This watch is very expensive.', example_translation: '這隻手錶很貴。' },
+                    { word: 'extra', translation: '額外的', example: 'Do you need extra time?', example_translation: '你需要額外的時間嗎？' },
+                    { word: 'easy', translation: '簡單的', example: 'The test was easy.', example_translation: '考試很簡單。' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "The soldiers were ordered to ____ the mission at dawn.", translation: "士兵們被命令在黎明時____任務。", options: ["carry out", "carry on", "carry off", "carry over"], answer: 0, keywords: [
-                    { word: 'carry out', translation: '執行', example: 'They will carry out the plan.', example_translation: '他們將執行這項計畫。' }
+                { type: 'reading', difficulty: 2, question: "The soldiers were ordered to ____ the mission at dawn.", translation: "士兵們被命令在黎明時____任務。", options: ["carry out", "carry on", "carry off", "carry over"], answer: 0, all_keywords: [
+                    { word: 'carry out', translation: '執行', example: 'They will carry out the plan.', example_translation: '他們將執行這項計畫。' },
+                    { word: 'carry on', translation: '繼續', example: 'Carry on with your work.', example_translation: '繼續你的工作。' },
+                    { word: 'carry off', translation: '成功完成(困難的事)', example: 'She carried off the speech well.', example_translation: '她成功地完成了演講。' },
+                    { word: 'carry over', translation: '延續', example: 'The meeting will carry over to tomorrow.', example_translation: '會議將延續到明天。' }
                 ]},
-                { type: 'reading', difficulty: 1, question: "Do we have ____ food for the next three days?", translation: "我們未來三天有____的食物嗎？", options: ["sufficient", "specific", "secure", "separate"], answer: 0, keywords: [
-                    { word: 'sufficient', translation: '足夠的', example: 'We have sufficient time.', example_translation: '我們有足夠的時間。' }
+                { type: 'reading', difficulty: 1, question: "Do we have ____ food for the next three days?", translation: "我們未來三天有____的食物嗎？", options: ["sufficient", "specific", "secure", "separate"], answer: 0, all_keywords: [
+                    { word: 'sufficient', translation: '足夠的', example: 'We have sufficient time.', example_translation: '我們有足夠的時間。' },
+                    { word: 'specific', translation: '特定的', example: 'I need a specific tool.', example_translation: '我需要一個特定的工具。' },
+                    { word: 'secure', translation: '安全的', example: 'The building is secure.', example_translation: '這棟建築是安全的。' },
+                    { word: 'separate', translation: '分開的', example: 'We have separate rooms.', example_translation: '我們有分開的房間。' }
                 ]},
             ],
             // --- 題庫 2: 文法 --- (20 題)
             'quiz2': [
-                { type: 'reading', difficulty: 1, question: "The soldier ____ on duty right now.", translation: "那位士兵現在正在____。", options: ["is", "are", "was", "be"], answer: 0, keywords: [
-                    { word: 'is', translation: '是 (be動詞第三人稱單數)', example: 'He is a doctor.', example_translation: '他是一名醫生。' }
+                { type: 'reading', difficulty: 1, question: "The soldier ____ on duty right now.", translation: "那位士兵現在正在____。", options: ["is", "are", "was", "be"], answer: 0, all_keywords: [
+                    { word: 'is', translation: '是 (be動詞第三人稱單數)', example: 'He is a doctor.', example_translation: '他是一名醫生。' },
+                    { word: 'are', translation: '是 (be動詞, 複數或第二人稱)', example: 'They are soldiers.', example_translation: '他們是士兵。' },
+                    { word: 'was', translation: '是 (be動詞, 過去式單數)', example: 'He was here yesterday.', example_translation: '他昨天在這裡。' },
+                    { word: 'be', translation: '是 (be動詞原形)', example: 'You must be quiet.', example_translation: '你必須保持安靜。' }
                 ]},
-                { type: 'reading', difficulty: 1, question: "He ____ to the training center yesterday.", translation: "他昨天____訓練中心。", options: ["went", "goes", "has gone", "will go"], answer: 0, keywords: [
-                    { word: 'went', translation: '去 (go的過去式)', example: 'I went home early.', example_translation: '我很早就回家了。' }
+                { type: 'reading', difficulty: 1, question: "He ____ to the training center yesterday.", translation: "他昨天____訓練中心。", options: ["went", "goes", "has gone", "will go"], answer: 0, all_keywords: [
+                    { word: 'went', translation: '去 (go的過去式)', example: 'I went home early.', example_translation: '我很早就回家了。' },
+                    { word: 'goes', translation: '去 (go的現在式第三人稱單數)', example: 'He goes to school by bus.', example_translation: '他搭公車上學。' },
+                    { word: 'has gone', translation: '已經去了 (現在完成式)', example: 'She has gone to the store.', example_translation: '她已經去商店了。' },
+                    { word: 'will go', translation: '將會去 (未來式)', example: 'We will go tomorrow.', example_translation: '我們明天會去。' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "If you study hard, you ____ the test.", translation: "如果你努力學習，你____考試。", options: ["will pass", "passed", "would pass", "pass"], answer: 0, keywords: [
-                    { word: 'will pass', translation: '將會通過 (未來式)', example: 'If it doesn\'t rain, we will go.', example_translation: '如果不下雨，我們就去。' }
+                { type: 'reading', difficulty: 2, question: "If you study hard, you ____ the test.", translation: "如果你努力學習，你____考試。", options: ["will pass", "passed", "would pass", "pass"], answer: 0, all_keywords: [
+                    { word: 'will pass', translation: '將會通過 (未來式)', example: 'If it doesn\'t rain, we will go.', example_translation: '如果不下雨，我們就去。' },
+                    { word: 'passed', translation: '通過 (過去式)', example: 'He passed the test last week.', example_translation: '他上週通過了考試。' },
+                    { word: 'would pass', translation: '將會通過 (假設語氣)', example: 'If I studied, I would pass.', example_translation: '如果我讀了書，我就會通過。' },
+                    { word: 'pass', translation: '通過 (現在式)', example: 'I always pass this store.', example_translation: '我總是經過這家店。' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "He has been a soldier ____ five years.", translation: "他當兵____五年了。", options: ["for", "since", "at", "in"], answer: 0, keywords: [
-                    { word: 'for', translation: '持續 (一段時間)', example: 'I have lived here for two years.', example_translation: '我已經在這裡住了兩年。' }
+                { type: 'reading', difficulty: 2, question: "He has been a soldier ____ five years.", translation: "他當兵____五年了。", options: ["for", "since", "at", "in"], answer: 0, all_keywords: [
+                    { word: 'for', translation: '持續 (一段時間)', example: 'I have lived here for two years.', example_translation: '我已經在這裡住了兩年。' },
+                    { word: 'since', translation: '自...以來 (一個時間點)', example: 'He has been here since 9 AM.', example_translation: '他從早上9點就在這了。' },
+                    { word: 'at', translation: '在 (時間點)', example: 'The meeting is at 10 AM.', example_translation: '會議在上午10點。' },
+                    { word: 'in', translation: '在 (月份/年份)', example: 'My birthday is in May.', example_translation: '我的生日在五月。' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "The report must be finished ____ Friday.", translation: "報告必須在週五____完成。", options: ["by", "on", "at", "until"], answer: 0, keywords: [
-                    { word: 'by', translation: '不晚於；藉由', example: 'Please finish it by 5 PM.', example_translation: '請在下午 5 點前完成。' }
+                { type: 'reading', difficulty: 2, question: "The report must be finished ____ Friday.", translation: "報告必須在週五____完成。", options: ["by", "on", "at", "until"], answer: 0, all_keywords: [
+                    { word: 'by', translation: '不晚於；藉由', example: 'Please finish it by 5 PM.', example_translation: '請在下午 5 點前完成。' },
+                    { word: 'on', translation: '在 (特定日期)', example: 'The party is on Friday.', example_translation: '派對在週五。' },
+                    { word: 'at', translation: '在 (時間點)', example: 'I\'ll see you at noon.', example_translation: '我中午見你。' },
+                    { word: 'until', translation: '直到', example: 'Wait here until I return.', example_translation: '在這裡等到我回來。' }
                 ]},
-                { type: 'reading', difficulty: 1, question: "This is the ____ rifle I have ever used.", translation: "這是我用過____的步槍。", options: ["best", "good", "better", "well"], answer: 0, keywords: [
-                    { word: 'best', translation: '最好的 (good的最高級)', example: 'This is the best movie.', example_translation: '這是最棒的電影。' }
+                { type: 'reading', difficulty: 1, question: "This is the ____ rifle I have ever used.", translation: "這是我用過____的步槍。", options: ["best", "good", "better", "well"], answer: 0, all_keywords: [
+                    { word: 'best', translation: '最好的 (good的最高級)', example: 'This is the best movie.', example_translation: '這是最棒的電影。' },
+                    { word: 'good', translation: '好的 (原級)', example: 'This is a good rifle.', example_translation: '這是一把好步槍。' },
+                    { word: 'better', translation: '更好的 (good的比較級)', example: 'This rifle is better than that one.', example_translation: '這把步槍比那把好。' },
+                    { word: 'well', translation: '好地 (副詞)', example: 'He shoots well.', example_translation: '他射擊得很好。' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "You ____ smoke in this building. It's forbidden.", translation: "你____在這棟大樓裡吸煙。這是被禁止的。", options: ["must not", "do not", "should", "can"], answer: 0, keywords: [
-                    { word: 'must not', translation: '絕不可以', example: 'You must not cheat.', example_translation: '你絕不可作弊。' }
+                { type: 'reading', difficulty: 2, question: "You ____ smoke in this building. It's forbidden.", translation: "你____在這棟大樓裡吸煙。這是被禁止的。", options: ["must not", "do not", "should", "can"], answer: 0, all_keywords: [
+                    { word: 'must not', translation: '絕不可以', example: 'You must not cheat.', example_translation: '你絕不可作弊。' },
+                    { word: 'do not', translation: '不要 (一般否定)', example: 'I do not smoke.', example_translation: '我不抽煙。' },
+                    { word: 'should', translation: '應該', example: 'You should study.', example_translation: '你應該讀書。' },
+                    { word: 'can', translation: '可以', example: 'You can go now.', example_translation: '你現在可以走了。' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "Listen! Someone ____ for help.", translation: "聽！有人在____求救。", options: ["is crying", "cries", "cried", "has cried"], answer: 0, keywords: [
-                    { word: 'is crying', translation: '正在哭 (現在進行式)', example: 'The baby is crying.', example_translation: '嬰兒正在哭。' }
+                { type: 'reading', difficulty: 2, question: "Listen! Someone ____ for help.", translation: "聽！有人在____求救。", options: ["is crying", "cries", "cried", "has cried"], answer: 0, all_keywords: [
+                    { word: 'is crying', translation: '正在哭 (現在進行式)', example: 'The baby is crying.', example_translation: '嬰兒正在哭。' },
+                    { word: 'cries', translation: '哭 (現在式)', example: 'He cries easily.', example_translation: '他很容易哭。' },
+                    { word: 'cried', translation: '哭 (過去式)', example: 'She cried yesterday.', example_translation: '她昨天哭了。' },
+                    { word: 'has cried', translation: '已經哭過 (現在完成式)', example: 'He has cried all day.', example_translation: '他已經哭了一整天。' }
                 ]},
-                { type: 'reading', difficulty: 3, question: "The supplies ____ by the aircraft this morning.", translation: "補給品今天早上由飛機____。", options: ["were delivered", "delivered", "was delivering", "deliver"], answer: 0, keywords: [
-                    { word: 'were delivered', translation: '被運送 (被動語態，過去式)', example: 'The packages were delivered yesterday.', example_translation: '包裹昨天被送達了。' }
+                { type: 'reading', difficulty: 3, question: "The supplies ____ by the aircraft this morning.", translation: "補給品今天早上由飛機____。", options: ["were delivered", "delivered", "was delivering", "deliver"], answer: 0, all_keywords: [
+                    { word: 'were delivered', translation: '被運送 (被動語態，過去式)', example: 'The packages were delivered yesterday.', example_translation: '包裹昨天被送達了。' },
+                    { word: 'delivered', translation: '運送 (主動語態, 過去式)', example: 'He delivered the package.', example_translation: '他運送了包裹。' },
+                    { word: 'was delivering', translation: '正在運送 (過去進行式)', example: 'He was delivering mail.', example_translation: '他正在送信。' },
+                    { word: 'deliver', translation: '運送 (現在式)', example: 'They deliver pizza.', example_translation: '他們外送披薩。' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "He asked me ____ I knew the way.", translation: "他問我____是否知道路。", options: ["if", "that", "what", "which"], answer: 0, keywords: [
-                    { word: 'if', translation: '是否 (間接問句)', example: 'He asked if I was ready.', example_translation: '他問我是否準備好了。' }
+                { type: 'reading', difficulty: 2, question: "He asked me ____ I knew the way.", translation: "他問我____是否知道路。", options: ["if", "that", "what", "which"], answer: 0, all_keywords: [
+                    { word: 'if', translation: '是否 (間接問句)', example: 'He asked if I was ready.', example_translation: '他問我是否準備好了。' },
+                    { word: 'that', translation: '那 (連接詞)', example: 'He said that he was tired.', example_translation: '他說他累了。' },
+                    { word: 'what', translation: '什麼 (疑問詞)', example: 'He asked what I was doing.', example_translation: '他問我在做什麼。' },
+                    { word: 'which', translation: '哪個 (疑問詞)', example: 'He asked which one I liked.', example_translation: '他問我喜歡哪一個。' }
                 ]},
-                { type: 'reading', difficulty: 1, question: "There isn't ____ water left in the bottle.", translation: "瓶子裡沒有____水了。", options: ["any", "some", "no", "many"], answer: 0, keywords: [
-                    { word: 'any', translation: '任何 (用於否定句/疑問句)', example: 'I don\'t have any money.', example_translation: '我沒有任何錢。' }
+                { type: 'reading', difficulty: 1, question: "There isn't ____ water left in the bottle.", translation: "瓶子裡沒有____水了。", options: ["any", "some", "no", "many"], answer: 0, all_keywords: [
+                    { word: 'any', translation: '任何 (用於否定句/疑問句)', example: 'I don\'t have any money.', example_translation: '我沒有任何錢。' },
+                    { word: 'some', translation: '一些 (用於肯定句)', example: 'I have some water.', example_translation: '我有一些水。' },
+                    { word: 'no', translation: '沒有 (等於 not any)', example: 'There is no water left.', example_translation: '沒有水剩下了。' },
+                    { word: 'many', translation: '很多 (用於可數名詞)', example: 'I have many friends.', example_translation: '我有很多朋友。' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "The captain, ____ all his men, was ready for inspection.", translation: "上尉，____他所有的士兵，都準備好接受檢查了。", options: ["as well as", "as good as", "as soon as", "as far as"], answer: 0, keywords: [
-                    { word: 'as well as', translation: '以及', example: 'He is smart as well as kind.', example_translation: '他又聰明又善良。' }
+                { type: 'reading', difficulty: 2, question: "The captain, ____ all his men, was ready for inspection.", translation: "上尉，____他所有的士兵，都準備好接受檢查了。", options: ["as well as", "as good as", "as soon as", "as far as"], answer: 0, all_keywords: [
+                    { word: 'as well as', translation: '以及 (主要動詞看前者)', example: 'He, as well as his friends, is coming.', example_translation: '他和他朋友們都要來。' },
+                    { word: 'as good as', translation: '幾乎等於', example: 'The car is as good as new.', example_translation: '這車幾乎跟新的一樣。' },
+                    { word: 'as soon as', translation: '一...就...', example: 'Call me as soon as you arrive.', example_translation: '你一到就打給我。' },
+                    { word: 'as far as', translation: '就...而言', example: 'As far as I know, he is honest.', example_translation: '就我所知，他是誠實的。' }
                 ]},
-                { type: 'reading', difficulty: 3, question: "By the time the reinforcements arrived, the battle ____.", translation: "當援軍到達時，戰鬥已經____。", options: ["had ended", "ended", "will end", "ends"], answer: 0, keywords: [
-                    { word: 'had ended', translation: '已經結束 (過去完成式)', example: 'By the time I got there, the movie had started.', example_translation: '當我到那裡時，電影已經開始了。' }
+                { type: 'reading', difficulty: 3, question: "By the time the reinforcements arrived, the battle ____.", translation: "當援軍到達時，戰鬥已經____。", options: ["had ended", "ended", "will end", "ends"], answer: 0, all_keywords: [
+                    { word: 'had ended', translation: '已經結束 (過去完成式)', example: 'By the time I got there, the movie had started.', example_translation: '當我到那裡時，電影已經開始了。' },
+                    { word: 'ended', translation: '結束 (過去式)', example: 'The battle ended at noon.', example_translation: '戰鬥在中午結束了。' },
+                    { word: 'will end', translation: '將會結束 (未來式)', example: 'The game will end soon.', example_translation: '比賽即將結束。' },
+                    { word: 'ends', translation: '結束 (現在式)', example: 'The school year ends in June.', example_translation: '學年在六月結束。' }
                 ]},
-                { type: 'reading', difficulty: 1, question: "The new recruit is ____ than the others.", translation: "這位新兵比其他人____。", options: ["taller", "tall", "tallest", "more tall"], answer: 0, keywords: [
-                    { word: 'taller', translation: '更高的 (比較級)', example: 'He is taller than me.', example_translation: '他比我高。' }
+                { type: 'reading', difficulty: 1, question: "The new recruit is ____ than the others.", translation: "這位新兵比其他人____。", options: ["taller", "tall", "tallest", "more tall"], answer: 0, all_keywords: [
+                    { word: 'taller', translation: '更高的 (比較級)', example: 'He is taller than me.', example_translation: '他比我高。' },
+                    { word: 'tall', translation: '高的 (原級)', example: 'He is a tall man.', example_translation: '他是個高個子。' },
+                    { word: 'tallest', translation: '最高的 (最高級)', example: 'He is the tallest in the class.', example_translation: '他是班上最高的。' },
+                    { word: 'more tall', translation: '不正確的比較級', example: '(N/A - Tall is a single-syllable word)', example_translation: '(N/A - Tall 是單音節字)' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "He drives very ____. He might have an accident.", translation: "他開車非常____。他可能會出意外。", options: ["dangerously", "dangerous", "danger", "in danger"], answer: 0, keywords: [
-                    { word: 'dangerously', translation: '危險地 (副詞)', example: 'He lives dangerously.', example_translation: '他過著危險的生活。' }
+                { type: 'reading', difficulty: 2, question: "He drives very ____. He might have an accident.", translation: "他開車非常____。他可能會出意外。", options: ["dangerously", "dangerous", "danger", "in danger"], answer: 0, all_keywords: [
+                    { word: 'dangerously', translation: '危險地 (副詞)', example: 'He lives dangerously.', example_translation: '他過著危險的生活。' },
+                    { word: 'dangerous', translation: '危險的 (形容詞)', example: 'It is a dangerous job.', example_translation: '這是一份危險的工作。' },
+                    { word: 'danger', translation: '危險 (名詞)', example: 'He is in danger.', example_translation: '他處於危險之中。' },
+                    { word: 'in danger', translation: '處於危險中 (片語)', example: 'The species is in danger of extinction.', example_translation: '該物種瀕臨滅絕。' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "He is responsible ____ cleaning the barracks.", translation: "他負責____營房。", options: ["for", "to", "at", "with"], answer: 0, keywords: [
-                    { word: 'responsible for', translation: '對...負責', example: 'Who is responsible for this mess?', example_translation: '誰該為這一團亂負責？' }
+                { type: 'reading', difficulty: 2, question: "He is responsible ____ cleaning the barracks.", translation: "他負責____營房。", options: ["for", "to", "at", "with"], answer: 0, all_keywords: [
+                    { word: 'responsible for', translation: '對...負責', example: 'Who is responsible for this mess?', example_translation: '誰該為這一團亂負責？' },
+                    { word: 'responsible to', translation: '向...負責(某人)', example: 'I am responsible to my boss.', example_translation: '我對我老闆負責。' },
+                    { word: 'at', translation: '在 (介系詞)', example: 'He is at the door.', example_translation: '他在門口。' },
+                    { word: 'with', translation: '和 (介系詞)', example: 'I agree with you.', example_translation: '我同意你。' }
                 ]},
-                { type: 'reading', difficulty: 3, question: "____ it was raining, the soldiers continued their training.", translation: "____下著雨，士兵們繼續他們的訓練。", options: ["Although", "Because", "So", "However"], answer: 0, keywords: [
-                    { word: 'Although', translation: '雖然', example: 'Although he was tired, he kept working.', example_translation: '雖然他很累，他仍繼續工作。' }
+                { type: 'reading', difficulty: 3, question: "____ it was raining, the soldiers continued their training.", translation: "____下著雨，士兵們繼續他們的訓練。", options: ["Although", "Because", "So", "However"], answer: 0, all_keywords: [
+                    { word: 'Although', translation: '雖然 (連接詞)', example: 'Although he was tired, he kept working.', example_translation: '雖然他很累，他仍繼續工作。' },
+                    { word: 'Because', translation: '因為 (連接詞)', example: 'We left because it was raining.', example_translation: '因為下雨了，所以我們離開了。' },
+                    { word: 'So', translation: '所以 (連接詞)', example: 'It was raining, so we left.', example_translation: '下雨了，所以我們離開了。' },
+                    { word: 'However', translation: '然而 (副詞)', example: 'It was raining. However, we went out.', example_translation: '下雨了。然而，我們還是出去了。' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "He spends a lot of time ____ his rifle.", translation: "他花很多時間____他的步槍。", options: ["cleaning", "clean", "to clean", "cleaned"], answer: 0, keywords: [
-                    { word: 'spend time (V-ing)', translation: '花時間做...', example: 'I spend time reading books.', example_translation: '我花時間讀書。' }
+                { type: 'reading', difficulty: 2, question: "He spends a lot of time ____ his rifle.", translation: "他花很多時間____他的步槍。", options: ["cleaning", "clean", "to clean", "cleaned"], answer: 0, all_keywords: [
+                    { word: 'spend time (V-ing)', translation: '花時間做...', example: 'I spend time reading books.', example_translation: '我花時間讀書。' },
+                    { word: 'clean', translation: '乾淨的 (adj); 清潔 (v)', example: 'The room is clean.', example_translation: '房間很乾淨。' },
+                    { word: 'to clean', translation: '去清潔 (不定詞)', example: 'I need to clean my room.', example_translation: '我需要打掃我的房間。' },
+                    { word: 'cleaned', translation: '已清潔的 (adj); 清潔 (v. 過去式)', example: 'He cleaned his room.', example_translation: '他打掃了他的房間。' }
                 ]},
-                { type: 'reading', difficulty: 2, question: "The General ordered the bridge ____.", translation: "將軍下令____這座橋。", options: ["to be destroyed", "destroy", "destroyed", "destroying"], answer: 0, keywords: [
-                    { word: 'order (sb/sth) to be (Vpp)', translation: '命令(某物)被...', example: 'He ordered the room to be cleaned.', example_translation: '他下令房間要被打掃。' }
+                { type: 'reading', difficulty: 2, question: "The General ordered the bridge ____.", translation: "將軍下令____這座橋。", options: ["to be destroyed", "destroy", "destroyed", "destroying"], answer: 0, all_keywords: [
+                    { word: 'order (sb/sth) to be (Vpp)', translation: '命令(某物)被...', example: 'He ordered the room to be cleaned.', example_translation: '他下令房間要被打掃。' },
+                    { word: 'destroy', translation: '摧毀 (v. 原形)', example: 'They will destroy the building.', example_translation: '他們將摧毀這棟建築。' },
+                    { word: 'destroyed', translation: '已摧毀的 (adj); 摧毀 (v. 過去式)', example: 'The bridge was destroyed.', example_translation: '橋被摧毀了。' },
+                    { word: 'destroying', translation: '正在摧毀 (v-ing)', example: 'They are destroying the evidence.', example_translation: '他們正在銷毀證據。' }
                 ]},
-                { type: 'reading', difficulty: 3, question: "____ have you been stationed at this base?", translation: "你駐紮在這個基地____了？", options: ["How long", "How much", "How often", "How far"], answer: 0, keywords: [
-                    { word: 'How long', translation: '多久 (詢問時間長度)', example: 'How long have you been here?', example_translation: '你在這裡多久了？' }
+                { type: 'reading', difficulty: 3, question: "____ have you been stationed at this base?", translation: "你駐紮在這個基地____了？", options: ["How long", "How much", "How often", "How far"], answer: 0, all_keywords: [
+                    { word: 'How long', translation: '多久 (詢問時間長度)', example: 'How long have you been here?', example_translation: '你在這裡多久了？' },
+                    { word: 'How much', translation: '多少 (詢問價格/不可數)', example: 'How much is it?', example_translation: '這個多少錢？' },
+                    { word: 'How often', translation: '多常 (詢問頻率)', example: 'How often do you go?', example_translation: '你多常去？' },
+                    { word: 'How far', translation: '多遠 (詢問距離)', example: 'How far is the station?', example_translation: '車站有多遠？' }
                 ]},
             ],
             // --- 題庫 3: 模擬聽力 --- (20 題)
             'quiz3': [
-                { type: 'listening', difficulty: 1, question: "Man: Do you know where the mess hall is?\nWoman: It's the building on your left.\n\n(Narrator): What does the woman tell the man?", translation: "男：你知道餐廳在哪嗎？\n女：它在你左邊那棟建築物。\n\n(旁白)：這位女士告訴了男士什麼？", options: ["(A) The location of the mess hall.", "(B) What is on the menu.", "(C) The building is closed.", "(D) He left his building."], answer: 0, keywords: [
+                { type: 'listening', difficulty: 1, question: "Man: Do you know where the mess hall is?\nWoman: It's the building on your left.\n\n(Narrator): What does the woman tell the man?", translation: "男：你知道餐廳在哪嗎？\n女：它在你左邊那棟建築物。\n\n(旁白)：這位女士告訴了男士什麼？", options: ["(A) The location of the mess hall.", "(B) What is on the menu.", "(C) The building is closed.", "(D) He left his building."], answer: 0, all_keywords: [
                     { word: 'mess hall', translation: '餐廳 (軍用)', example: 'Soldiers eat in the mess hall.', example_translation: '士兵們在餐廳吃飯。' },
                     { word: 'location', translation: '位置', example: 'What is your current location?', example_translation: '你目前的位置在哪？' }
                 ]},
-                { type: 'listening', difficulty: 1, question: "Woman: What time is the briefing?\nMan: It starts at 0900 sharp.\n\n(Narrator): What did the man say about the briefing?", translation: "女：簡報是什麼時候？\n男：九點準時開始。\n\n(旁白)：關於簡報，這位男士說了什麼？", options: ["(A) It begins exactly at 9 AM.", "(B) It is a very sharp briefing.", "(C) It has been canceled.", "(D) It is at 9 PM."], answer: 0, keywords: [
+                { type: 'listening', difficulty: 1, question: "Woman: What time is the briefing?\nMan: It starts at 0900 sharp.\n\n(Narrator): What did the man say about the briefing?", translation: "女：簡報是什麼時候？\n男：九點準時開始。\n\n(旁白)：關於簡報，這位男士說了什麼？", options: ["(A) It begins exactly at 9 AM.", "(B) It is a very sharp briefing.", "(C) It has been canceled.", "(D) It is at 9 PM."], answer: 0, all_keywords: [
                     { word: 'briefing', translation: '簡報', example: 'The daily briefing is at 0800.', example_translation: '每日簡報在 0800。' },
                     { word: 'sharp', translation: '準時；鋒利的', example: 'The meeting is at 3 PM sharp.', example_translation: '會議在下午 3 點準時開始。' }
                 ]},
-                { type: 'listening', difficulty: 2, question: "Man: I can't find my ID card.\nWoman: You'd better report it immediately.\n\n(Narrator): What does the woman suggest the man do?", translation: "男：我找不到我的識別證。\n女：你最好立刻回報。\n\n(旁白)：這位女士建議男士做什麼？", options: ["(A) Report the loss right away.", "(B) Look for it in his room.", "(C) Get a new ID card tomorrow.", "(D) Go to the new building."], answer: 0, keywords: [
+                { type: 'listening', difficulty: 2, question: "Man: I can't find my ID card.\nWoman: You'd better report it immediately.\n\n(Narrator): What does the woman suggest the man do?", translation: "男：我找不到我的識別證。\n女：你最好立刻回報。\n\n(旁白)：這位女士建議男士做什麼？", options: ["(A) Report the loss right away.", "(B) Look for it in his room.", "(C) Get a new ID card tomorrow.", "(D) Go to the new building."], answer: 0, all_keywords: [
                     { word: 'ID card', translation: '識別證', example: 'You need an ID card to enter.', example_translation: '你需要識別證才能進入。' },
                     { word: 'report', translation: '回報；報告', example: 'He reported the incident.', example_translation: '他回報了這起事件。' }
                 ]},
-                { type: 'listening', difficulty: 2, question: "Man: How's the weather for tomorrow's training?\nWoman: They said it's going to be extremely hot.\n\n(Narrator): What did the woman say about the weather?", translation: "男：明天的訓練天氣如何？\n女：他們說將會非常熱。\n\n(旁白)：關於天氣，這位女士說了什麼？", options: ["(A) It will be very hot.", "(B) It will be cold.", "(C) It will rain.", "(D) The training is cancelled."], answer: 0, keywords: [
+                { type: 'listening', difficulty: 2, question: "Man: How's the weather for tomorrow's training?\nWoman: They said it's going to be extremely hot.\n\n(Narrator): What did the woman say about the weather?", translation: "男：明天的訓練天氣如何？\n女：他們說將會非常熱。\n\n(旁白)：關於天氣，這位女士說了什麼？", options: ["(A) It will be very hot.", "(B) It will be cold.", "(C) It will rain.", "(D) The training is cancelled."], answer: 0, all_keywords: [
                     { word: 'extremely', translation: '極度地', example: 'It is extremely important.', example_translation: '這極度重要。' }
                 ]},
-                { type: 'listening', difficulty: 1, question: "Man: Did you finish the report?\nWoman: No, I need more time.\n\n(Narrator): What does the woman mean?", translation: "男：你完成報告了嗎？\n女：還沒，我需要更多時間。\n\n(旁白)：這位女士是什麼意思？", options: ["(A) She has not completed the report.", "(B) The report was too long.", "(C) She finished it on time.", "(D) She will report the man."], answer: 0, keywords: [
+                { type: 'listening', difficulty: 1, question: "Man: Did you finish the report?\nWoman: No, I need more time.\n\n(Narrator): What does the woman mean?", translation: "男：你完成報告了嗎？\n女：還沒，我需要更多時間。\n\n(旁白)：這位女士是什麼意思？", options: ["(A) She has not completed the report.", "(B) The report was too long.", "(C) She finished it on time.", "(D) She will report the man."], answer: 0, all_keywords: [
                     { word: 'complete', translation: '完成', example: 'Please complete this form.', example_translation: '請完成這張表格。' }
                 ]},
-                { type: 'listening', difficulty: 2, question: "Woman: This vehicle needs fuel.\nMan: Let's take it to the gas station.\n\n(Narrator): Why are they going to the gas station?", translation: "女：這台車需要燃料了。\n男：我們把它開去加油站吧。\n\n(旁白)：他們為什麼要去加油站？", options: ["(A) The vehicle is out of gas.", "(B) The vehicle is broken.", "(C) They need to buy snacks.", "(D) They are going to the station."], answer: 0, keywords: [
+                { type: 'listening', difficulty: 2, question: "Woman: This vehicle needs fuel.\nMan: Let's take it to the gas station.\n\n(Narrator): Why are they going to the gas station?", translation: "女：這台車需要燃料了。\n男：我們把它開去加油站吧。\n\n(旁白)：他們為什麼要去加油站？", options: ["(A) The vehicle is out of gas.", "(B) The vehicle is broken.", "(C) They need to buy snacks.", "(D) They are going to the station."], answer: 0, all_keywords: [
                     { word: 'vehicle', translation: '車輛', example: 'a military vehicle', example_translation: '一輛軍車。' },
                     { word: 'fuel', translation: '燃料', example: 'The car needs fuel.', example_translation: '車子需要燃料。' }
                 ]},
-                { type: 'listening', difficulty: 2, question: "Man: I have a severe headache.\nWoman: You should go to the clinic.\n\n(Narrator): Where does the woman tell the man to go?", translation: "男：我頭痛得很嚴重。\n女：你應該去診所。\n\n(旁白)：女士叫男士去哪裡？", options: ["(A) To the medical facility.", "(B) To the dining hall.", "(C) To his room.", "(D) To the training field."], answer: 0, keywords: [
+                { type: 'listening', difficulty: 2, question: "Man: I have a severe headache.\nWoman: You should go to the clinic.\n\n(Narrator): Where does the woman tell the man to go?", translation: "男：我頭痛得很嚴重。\n女：你應該去診所。\n\n(旁白)：女士叫男士去哪裡？", options: ["(A) To the medical facility.", "(B) To the dining hall.", "(C) To his room.", "(D) To the training field."], answer: 0, all_keywords: [
                     { word: 'severe', translation: '嚴重的', example: 'a severe storm', example_translation: '一場嚴重的暴風雨。' },
                     { word: 'clinic', translation: '診所', example: 'The base clinic is open.', example_translation: '基地診所是開放的。' }
                 ]},
-                { type: 'listening', difficulty: 3, question: "Woman: The commander wants this done by tomorrow.\nMan: That's impossible, we don't have enough personnel.\n\n(Narrator): Why does the man think it's impossible?", translation: "女：指揮官希望這件事明天完成。\n男：那不可能，我們沒有足夠的人員。\n\n(旁白)：為什麼男士認為這不可能？", options: ["(A) They are short-staffed.", "(B) The commander is wrong.", "(C) It is too easy.", "(D) They have enough time."], answer: 0, keywords: [
+                { type: 'listening', difficulty: 3, question: "Woman: The commander wants this done by tomorrow.\nMan: That's impossible, we don't have enough personnel.\n\n(Narrator): Why does the man think it's impossible?", translation: "女：指揮官希望這件事明天完成。\n男：那不可能，我們沒有足夠的人員。\n\n(旁白)：為什麼男士認為這不可能？", options: ["(A) They are short-staffed.", "(B) The commander is wrong.", "(C) It is too easy.", "(D) They have enough time."], answer: 0, all_keywords: [
                     { word: 'commander', translation: '指揮官', example: 'The commander gave the order.', example_translation: '指揮官下達了命令。' },
                     { word: 'personnel', translation: '人員 (總稱)', example: 'All personnel must attend.', example_translation: '所有人員都必須參加。' }
                 ]},
-                { type: 'listening', difficulty: 1, question: "Man: Turn right at the next intersection.\nWoman: Roger that.\n\n(Narrator): What does the woman mean?", translation: "男：在下個交叉口右轉。\n女：收到。\n\n(旁白)：這位女士是什麼意思？", options: ["(A) She understands the instruction.", "(B) Her name is Roger.", "(C) She will turn left.", "(D) She does not understand."], answer: 0, keywords: [
+                { type: 'listening', difficulty: 1, question: "Man: Turn right at the next intersection.\nWoman: Roger that.\n\n(Narrator): What does the woman mean?", translation: "男：在下個交叉口右轉。\n女：收到。\n\n(旁白)：這位女士是什麼意思？", options: ["(A) She understands the instruction.", "(B) Her name is Roger.", "(C) She will turn left.", "(D) She does not understand."], answer: 0, all_keywords: [
                     { word: 'intersection', translation: '交叉口', example: 'Stop at the intersection.', example_translation: '在交叉口停下。' },
                     { word: 'Roger that', translation: '收到 (無線電用語)', example: '"Roger that," the pilot said.', example_translation: '「收到。」飛行員說。' }
                 ]},
-                { type: 'listening', difficulty: 2, question: "Man: The drill is scheduled for 1400.\nWoman: Has it been confirmed?\n\n(Narrator): What does the woman want to know?", translation: "男：演習預定在 1400 進行。\n女：已經確認了嗎？\n\n(旁白)：這位女士想知道什麼？", options: ["(A) If the time is definite.", "(B) If the drill is cancelled.", "(C) What the drill is for.", "(D) Where the drill is."], answer: 0, keywords: [
+                { type: 'listening', difficulty: 2, question: "Man: The drill is scheduled for 1400.\nWoman: Has it been confirmed?\n\n(Narrator): What does the woman want to know?", translation: "男：演習預定在 1400 進行。\n女：已經確認了嗎？\n\n(旁白)：這位女士想知道什麼？", options: ["(A) If the time is definite.", "(B) If the drill is cancelled.", "(C) What the drill is for.", "(D) Where the drill is."], answer: 0, all_keywords: [
                     { word: 'drill', translation: '演習', example: 'a fire drill', example_translation: '消防演習。' },
                     { word: 'confirmed', translation: '已確認的', example: 'The schedule is confirmed.', example_translation: '行程已確認。' }
                 ]},
-                { type: 'listening', difficulty: 2, question: "Man: It's freezing in here.\nWoman: I'll turn up the heat.\n\n(Narrator): What will the woman do?", translation: "男：這裡冷死了。\n女：我把暖氣調高一點。\n\n(旁白)：這位女士將會做什麼？", options: ["(A) Make the room warmer.", "(B) Make the room colder.", "(C) Go outside.", "(D) Open the window."], answer: 0, keywords: [
+                { type: 'listening', difficulty: 2, question: "Man: It's freezing in here.\nWoman: I'll turn up the heat.\n\n(Narrator): What will the woman do?", translation: "男：這裡冷死了。\n女：我把暖氣調高一點。\n\n(旁白)：這位女士將會做什麼？", options: ["(A) Make the room warmer.", "(B) Make the room colder.", "(C) Go outside.", "(D) Open the window."], answer: 0, all_keywords: [
                     { word: 'freezing', translation: '極冷的', example: 'It\'s freezing outside.', example_translation: '外面冷死了。' },
                     { word: 'turn up', translation: '調高 (音量、溫度)', example: 'Turn up the music.', example_translation: '把音樂開大聲點。' }
                 ]},
-                { type: 'listening', difficulty: 2, question: "Woman: Are these your belongings?\nMan: Yes, they are. Thank you.\n\n(Narrator): What did the woman find?", translation: "女：這些是你的私人物品嗎？\n男：是的，是我的。謝謝你。\n\n(旁白)：這位女士找到了什麼？", options: ["(A) The man's personal items.", "(B) The man's uniform.", "(C) The man's orders.", "(D) The man's friend."], answer: 0, keywords: [
+                { type: 'listening', difficulty: 2, question: "Woman: Are these your belongings?\nMan: Yes, they are. Thank you.\n\n(Narrator): What did the woman find?", translation: "女：這些是你的私人物品嗎？\n男：是的，是我的。謝謝你。\n\n(旁白)：這位女士找到了什麼？", options: ["(A) The man's personal items.", "(B) The man's uniform.", "(C) The man's orders.", "(D) The man's friend."], answer: 0, all_keywords: [
                     { word: 'belongings', translation: '所有物；行李', example: 'Please take all your belongings.', example_translation: '請帶上你所有的物品。' }
                 ]},
-                { type: 'listening', difficulty: 3, question: "Man: Did you calibrate the equipment?\nWoman: I'm still working on it.\n\n(Narrator): What is the woman doing?", translation: "男：你校準設備了嗎？\n女：我還在處理。\n\n(旁白)：這位女士正在做什麼？", options: ["(A) She is adjusting the equipment.", "(B) She is buying new equipment.", "(C) She is finished with her work.", "(D) She is celebrating."], answer: 0, keywords: [
+                { type: 'listening', difficulty: 3, question: "Man: Did you calibrate the equipment?\nWoman: I'm still working on it.\n\n(Narrator): What is the woman doing?", translation: "男：你校準設備了嗎？\n女：我還在處理。\n\n(旁白)：這位女士正在做什麼？", options: ["(A) She is adjusting the equipment.", "(B) She is buying new equipment.", "(C) She is finished with her work.", "(D) She is celebrating."], answer: 0, all_keywords: [
                     { word: 'calibrate', translation: '校準', example: 'You must calibrate the tools.', example_translation: '你必須校準這些工具。' }
                 ]},
-                { type: 'listening', difficulty: 1, question: "Man: Please stand by.\nWoman: Standing by.\n\n(Narrator): What did the man tell the woman to do?", translation: "男：請待命。\n女：待命中。\n\n(旁白)：男士叫女士做什麼？", options: ["(A) To wait.", "(B) To stand up.", "(C) To leave.", "(D) To sit down."], answer: 0, keywords: [
+                { type: 'listening', difficulty: 1, question: "Man: Please stand by.\nWoman: Standing by.\n\n(Narrator): What did the man tell the woman to do?", translation: "男：請待命。\n女：待命中。\n\n(旁白)：男士叫女士做什麼？", options: ["(A) To wait.", "(B) To stand up.", "(C) To leave.", "(D) To sit down."], answer: 0, all_keywords: [
                     { word: 'stand by', translation: '待命', example: 'The rescue team is standing by.', example_translation: '救援隊正在待命。' }
                 ]},
-                { type: 'listening', difficulty: 2, question: "Woman: What are your duties today?\nMan: I'm on guard duty tonight.\n\n(Narrator): What is the man's task?", translation: "女：你今天的職責是什麼？\n男：我今晚站衛兵。\n\n(旁白)：這位男士的任務是什麼？", options: ["(A) He will be a guard.", "(B) He will be sleeping.", "(C) He will be off duty.", "(D) He will be driving."], answer: 0, keywords: [
+                { type: 'listening', difficulty: 2, question: "Woman: What are your duties today?\nMan: I'm on guard duty tonight.\n\n(Narrator): What is the man's task?", translation: "女：你今天的職責是什麼？\n男：我今晚站衛兵。\n\n(旁白)：這位男士的任務是什麼？", options: ["(A) He will be a guard.", "(B) He will be sleeping.", "(C) He will be off duty.", "(D) He will be driving."], answer: 0, all_keywords: [
                     { word: 'guard duty', translation: '衛兵勤務', example: 'He has guard duty from 12 to 4.', example_translation: '他 12 點到 4 點站衛兵。' }
                 ]},
-                { type: 'listening', difficulty: 2, question: "Man: This mission is hazardous.\nWoman: I know, we must be careful.\n\n(Narrator): What did the man say about the mission?", translation: "男：這項任務很危險。\n女：我知道，我們必須小心。\n\n(旁白)：關於這項任務，男士說了什麼？", options: ["(A) It is dangerous.", "(B) It is easy.", "(C) It is finished.", "(D) It is boring."], answer: 0, keywords: [
+                { type: 'listening', difficulty: 2, question: "Man: This mission is hazardous.\nWoman: I know, we must be careful.\n\n(Narrator): What did the man say about the mission?", translation: "男：這項任務很危險。\n女：我知道，我們必須小心。\n\n(旁白)：關於這項任務，男士說了什麼？", options: ["(A) It is dangerous.", "(B) It is easy.", "(C) It is finished.", "(D) It is boring."], answer: 0, all_keywords: [
                     { word: 'hazardous', translation: '危險的', example: 'hazardous materials', example_translation: '危險物質。' }
                 ]},
-                { type: 'listening', difficulty: 3, question: "Woman: Did you read the memorandum?\nMan: Not yet, I just got here.\n\n(Narrator): What has the man not read?", translation: "女：你讀了那份備忘錄嗎？\n男：還沒，我剛到。\n\n(旁白)：這位男士還沒讀什麼？", options: ["(A) The official note.", "(B) The newspaper.", "(C) The menu.", "(D) The book."], answer: 0, keywords: [
+                { type: 'listening', difficulty: 3, question: "Woman: Did you read the memorandum?\nMan: Not yet, I just got here.\n\n(Narrator): What has the man not read?", translation: "女：你讀了那份備忘錄嗎？\n男：還沒，我剛到。\n\n(旁白)：這位男士還沒讀什麼？", options: ["(A) The official note.", "(B) The newspaper.", "(C) The menu.", "(D) The book."], answer: 0, all_keywords: [
                     { word: 'memorandum', translation: '備忘錄', example: 'A memorandum was sent to all staff.', example_translation: '一份備忘錄已發給所有員工。' }
                 ]},
-                { type: 'listening', difficulty: 2, question: "Man: Are you familiar with this weapon?\nWoman: Yes, I've trained with it extensively.\n\n(Narrator): What does the woman mean?", translation: "男：你熟悉這款武器嗎？\n女：是的，我用它做過密集的訓練。\n\n(旁白)：這位女士是什麼意思？", options: ["(A) She has used it a lot.", "(B) She has never seen it.", "(C) It is a new weapon.", "(D) She does not like it."], answer: 0, keywords: [
+                { type: 'listening', difficulty: 2, question: "Man: Are you familiar with this weapon?\nWoman: Yes, I've trained with it extensively.\n\n(Narrator): What does the woman mean?", translation: "男：你熟悉這款武器嗎？\n女：是的，我用它做過密集的訓練。\n\n(旁白)：這位女士是什麼意思？", options: ["(A) She has used it a lot.", "(B) She has never seen it.", "(C) It is a new weapon.", "(D) She does not like it."], answer: 0, all_keywords: [
                     { word: 'familiar with', translation: '熟悉', example: 'Are you familiar with this area?', example_translation: '你對這個地區熟悉嗎？' },
                     { word: 'extensively', translation: '廣泛地；密集地', example: 'He traveled extensively.', example_translation: '他遊歷甚廣。' }
                 ]},
-                { type: 'listening', difficulty: 1, question: "Man: What's your rank?\nWoman: I'm a private.\n\n(Narrator): What did the man ask the woman?", translation: "男：你是什麼階級？\n女：我是一名二等兵。\n\n(旁白)：男士問了女士什麼？", options: ["(A) Her military grade.", "(B) Her bank account.", "(C) Her name.", "(D) Her job."], answer: 0, keywords: [
+                { type: 'listening', difficulty: 1, question: "Man: What's your rank?\nWoman: I'm a private.\n\n(Narrator): What did the man ask the woman?", translation: "男：你是什麼階級？\n女：我是一名二等兵。\n\n(旁白)：男士問了女士什麼？", options: ["(A) Her military grade.", "(B) Her bank account.", "(C) Her name.", "(D) Her job."], answer: 0, all_keywords: [
                     { word: 'rank', translation: '階級', example: 'He holds the rank of Captain.', example_translation: '他是上尉軍銜。' },
                     { word: 'private', translation: '二等兵', example: 'He is a Private First Class.', example_translation: '他是一等兵。' }
                 ]},
-                { type: 'listening', difficulty: 3, question: "Woman: The coordinates are 34 North, 118 West.\nMan: I've got it. Proceeding to target.\n\n(Narrator): What did the woman provide?", translation: "女：座標是北緯 34 度，西經 118 度。\n男：我收到了。正前往目標。\n\n(旁白)：這位女士提供了什麼？", options: ["(A) A specific location.", "(B) The time of day.", "(C) The weather report.", "(D) The name of the target."], answer: 0, keywords: [
+                { type: 'listening', difficulty: 3, question: "Woman: The coordinates are 34 North, 118 West.\nMan: I've got it. Proceeding to target.\n\n(Narrator): What did the woman provide?", translation: "女：座標是北緯 34 度，西經 118 度。\n男：我收到了。正前往目標。\n\n(旁白)：這位女士提供了什麼？", options: ["(A) A specific location.", "(B) The time of day.", "(C) The weather report.", "(D) The name of the target."], answer: 0, all_keywords: [
                     { word: 'coordinates', translation: '座標', example: 'Give me your coordinates.', example_translation: '給我你的座標。' },
                     { word: 'proceeding', translation: '前進 (v-ing)', example: 'The plan is proceeding well.', example_translation: '計畫進展順利。' }
                 ]},
@@ -829,21 +979,38 @@
 
             const correctOptionText = q.options[q.answer];
             
-            // 處理聽力題的 ____ 替換 (如果有的話)
-            let filledQuestion, filledTranslation;
-            if (q.question.includes('____')) {
-                 filledQuestion = q.question.replace(/____/g, `<span class='font-bold text-yellow-300'>${correctOptionText}</span>`);
-                 filledTranslation = q.translation.replace(/____/g, `<span class='font-bold text-cyan-300'>${correctOptionText}</span>`);
-            } else {
-                // 聽力題沒有 ____，直接顯示
-                filledQuestion = q.question.replace(/\n/g, '<br>');
-                filledTranslation = q.translation.replace(/\n/g, '<br>');
-            }
+            // UPDATED: Logic to handle question text, translation, and TTS text
+            let filledQuestionHTML, filledTranslation, filledQuestionText;
 
+            if (q.question.includes('____')) {
+                 filledQuestionHTML = q.question.replace(/____/g, `<span class='font-bold text-yellow-300'>${correctOptionText}</span>`);
+                 filledTranslation = q.translation.replace(/____/g, `<span class='font-bold text-cyan-300'>${correctOptionText}</span>`);
+                 filledQuestionText = q.question.replace(/____/g, correctOptionText); // Plain text for TTS
+            } else {
+                // For listening questions
+                filledQuestionHTML = q.question.replace(/\n/g, '<br>');
+                filledTranslation = q.translation.replace(/\n/g, '<br>');
+                // For listening TTS, we only want the narrator part
+                const narratorPart = q.question.split('(Narrator):')[1];
+                if (narratorPart) {
+                     filledQuestionText = narratorPart.trim();
+                } else {
+                     filledQuestionText = q.question.replace(/\n/g, ' '); // Fallback
+                }
+            }
+            
+            const escapedFilledQuestionText = filledQuestionText.replace(/'/g, "\\'");
+
+            // UPDATED: Added speaker button next to the original question
             postAnswerDisplay.innerHTML = `
                 <div class="p-4 bg-gray-900 rounded-lg border border-gray-700">
-                    <p class="font-bold text-yellow-400">題目原文 (含正解)：</p>
-                    <p class="text-gray-300 mb-2">${filledQuestion}</p>
+                    <div class="flex justify-between items-center">
+                        <p class="font-bold text-yellow-400">題目原文 (含正解)：</p>
+                        <button onclick="speak('${escapedFilledQuestionText}')" class="text-gray-400 p-1 rounded-full hover:bg-gray-700 hover:text-white transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon></svg>
+                        </button>
+                    </div>
+                    <p class="text-gray-300 mb-2">${filledQuestionHTML}</p>
                     <button onclick="this.nextElementSibling.style.display='block'; this.style.display='none';" class="mt-2 text-sm text-cyan-400 hover:text-cyan-300 font-semibold">
                         <svg xmlns="http://www.w3.org/2000/svg" class="inline h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fill-rule="evenodd" d="M.458 10C3.732 4.943 9.522 3 10 3s6.268 1.943 9.542 7c-3.274 5.057-9.064 7-9.542 7S3.732 15.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" /></svg>
                         顯示中文翻譯
@@ -852,15 +1019,17 @@
                 </div>
             `;
 
-            if (q.keywords && q.keywords.length > 0) {
-                q.keywords.forEach(kw => learnedKeywords.push(kw));
+            // UPDATED: Use 'all_keywords' instead of 'keywords'
+            if (q.all_keywords && q.all_keywords.length > 0) {
+                q.all_keywords.forEach(kw => learnedKeywords.push(kw)); // This logic seems ok, it just collects them
                 const keywordsButton = document.createElement('button');
-                keywordsButton.textContent = '關鍵單字';
+                keywordsButton.textContent = '關鍵單字 (全選項)'; // Updated button text
                 keywordsButton.className = 'bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 px-4 rounded-lg transition duration-300';
 
                 keywordsButton.onclick = () => {
                     let keywordsHTML = '<div class="space-y-3">';
-                    q.keywords.forEach(kw => {
+                    // UPDATED: Iterate over 'all_keywords'
+                    q.all_keywords.forEach(kw => {
                         const escapedWord = kw.word.replace(/'/g, "\\'");
                         const escapedExample = kw.example.replace(/'/g, "\\'");
                         
@@ -872,8 +1041,8 @@
                             : `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-500 hover:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.5l1.318-1.182a4.5 4.5 0 116.364 6.364L12 20.06l-7.682-7.378a4.5 4.5 0 010-6.364z" /></svg>`;
                         const kwString = JSON.stringify(kw).replace(/'/g, "\\'");
 
-                        // FIX: Use sanitized word for the button ID as well, just in case, although it's not the source of the error.
-                        const buttonId = kw.word.replace(/[\/]/g, '_');
+                        // FIX: Use sanitized word for the button ID
+                        const buttonId = kw.word.replace(/[\/'\(\)]/g, '_'); // 移除更多可能導致問題的字元
 
                         keywordsHTML += `
                             <div class="p-4 bg-gray-900 rounded-lg border border-gray-700">
@@ -1083,9 +1252,6 @@
             backToWelcome(); // Go back to the main menu
         }
         // --- END NEW Exit Confirmation Functions ---
-
-
-        /* 'toggleFavoriteKeyword' is now defined in the Firebase init block */
         
         // --- NEW: Functions for Favorites Modal ---
         function showFavoritesModal() {
