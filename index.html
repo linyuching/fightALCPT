@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>英語能力模擬測驗</title>
+    <title>ECL 英語能力模擬測驗</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -186,15 +186,22 @@
         import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, deleteDoc, collection, onSnapshot, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- Firebase Config ---
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // --- 全域變數 ---
+        let app, db, auth;
+        let userId = null;
+        let isAuthReady = false;
+        let favoriteKeywords = [];
+        let currentTest = '';
+        let currentQuestions = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let timerInterval;
+        let currentTimerValue = 0;
+        let isTestPaused = false;
+        let quizPassStatus = { quiz1: false, quiz2: false, quiz3: false };
+        let firestoreUnsubscribe = null;
 
-        // --- ECL Quiz Data ---
-        // Correct answers are distributed among options 0, 1, 2, 3
+        // 題庫資料
         const alcptQuizBanks = {
             'quiz1': [
                 { type: 'reading', question: "The officer wants to ____ the security procedures.", translation: "軍官想要____安全程序。", options: ["review", "remove", "reverse", "receive"], answer: 0, all_keywords: [
@@ -256,69 +263,7 @@
                     { word: 'carry out', translation: '執行', example: 'They will carry out the plan.', example_translation: '他們將執行這項計畫。' },
                     { word: 'carry off', translation: '成功完成(困難的事)', example: 'She carried off the speech well.', example_translation: '她成功地完成了演講。' },
                     { word: 'carry over', translation: '延續', example: 'The meeting will carry over to tomorrow.', example_translation: '會議將延續到明天。' }
-                ]},
-                // Additional 20 questions for Quiz 1
-                { type: 'reading', question: "What is the ____ of rank for that officer?", translation: "那位軍官的軍階____是什麼？", options: ["grade", "graph", "group", "ground"], answer: 0, all_keywords: [
-                    { word: 'grade', translation: '等級；階級', example: 'He is a high-grade officer.', example_translation: '他是一名高級軍官。' },
-                    { word: 'graph', translation: '圖表', example: 'Draw a graph.', example_translation: '畫一張圖表。' },
-                    { word: 'group', translation: '團體', example: 'A group of soldiers.', example_translation: '一群士兵。' },
-                    { word: 'ground', translation: '地面', example: 'Sit on the ground.', example_translation: '坐在地上。' }
-                ]},
-                { type: 'reading', question: "The General is very ____; he expects everyone to obey.", translation: "將軍非常____；他要求每個人都要服從。", options: ["strong", "strict", "strange", "straight"], answer: 1, all_keywords: [
-                    { word: 'strong', translation: '強壯的', example: 'a strong man', example_translation: '強壯的男人。' },
-                    { word: 'strict', translation: '嚴格的', example: 'He is a strict teacher.', example_translation: '他是一位嚴格的老師。' },
-                    { word: 'strange', translation: '奇怪的', example: 'a strange noise', example_translation: '奇怪的噪音。' },
-                    { word: 'straight', translation: '筆直的', example: 'a straight line', example_translation: '一條直線。' }
-                ]},
-                { type: 'reading', question: "Please ____ your seatbelt before the flight.", translation: "請在飛行前____您的安全帶。", options: ["finish", "follow", "fasten", "forget"], answer: 2, all_keywords: [
-                    { word: 'finish', translation: '完成', example: 'Finish your meal.', example_translation: '吃完你的飯。' },
-                    { word: 'follow', translation: '跟隨', example: 'Follow me.', example_translation: '跟我來。' },
-                    { word: 'fasten', translation: '繫緊', example: 'Fasten your seatbelt.', example_translation: '繫好安全帶。' },
-                    { word: 'forget', translation: '忘記', example: 'Don\'t forget.', example_translation: '別忘了。' }
-                ]},
-                { type: 'reading', question: "The new equipment is very ____ to use.", translation: "這台新設備用起來非常____。", options: ["hard", "high", "hot", "handy"], answer: 3, all_keywords: [
-                    { word: 'hard', translation: '硬的；困難的', example: 'It is hard work.', example_translation: '這是辛苦的工作。' },
-                    { word: 'high', translation: '高的', example: 'a high mountain', example_translation: '一座高山。' },
-                    { word: 'hot', translation: '熱的', example: 'hot water', example_translation: '熱水。' },
-                    { word: 'handy', translation: '便利的；手邊的', example: 'It is very handy.', example_translation: '這非常方便。' }
-                ]},
-                { type: 'reading', question: "The troops had to ____ their positions at night.", translation: "部隊必須在夜間____他們的陣地。", options: ["abandon", "accept", "admire", "advise"], answer: 0, all_keywords: [
-                    { word: 'abandon', translation: '放棄；拋棄', example: 'They abandoned the ship.', example_translation: '他們棄船了。' },
-                    { word: 'accept', translation: '接受', example: 'Accept the offer.', example_translation: '接受提議。' },
-                    { word: 'admire', translation: '欽佩', example: 'I admire your courage.', example_translation: '我欽佩你的勇氣。' },
-                    { word: 'advise', translation: '建議', example: 'Advise the commander.', example_translation: '建議指揮官。' }
-                ]},
-                { type: 'reading', question: "The map showed an ____ path through the woods.", options: ["old", "alternative", "easy", "long"], answer: 1, all_keywords: [
-                    { word: 'old', translation: '舊的', example: 'old clothes', example_translation: '舊衣服。' },
-                    { word: 'alternative', translation: '替代的', example: 'an alternative route', example_translation: '一條替代路線。' },
-                    { word: 'easy', translation: '容易的', example: 'an easy task', example_translation: '一項容易的任務。' },
-                    { word: 'long', translation: '長的', example: 'a long road', example_translation: '一條長路。' }
-                ]},
-                { type: 'reading', question: "The medicine will ____ your pain.", options: ["help", "hurt", "hinder", "handle"], answer: 0, all_keywords: [
-                    { word: 'help', translation: '幫助', example: 'Can you help me?', example_translation: '你能幫我嗎？' },
-                    { word: 'hurt', translation: '受傷；疼痛', example: 'My leg hurts.', example_translation: '我的腳痛。' },
-                    { word: 'hinder', translation: '阻礙', example: 'Nothing can hinder us.', example_translation: '沒什麼能阻礙我們。' },
-                    { word: 'handle', translation: '處理', example: 'Handle with care.', example_translation: '小心輕放。' }
-                ]},
-                { type: 'reading', question: "He is a very ____ student; he always studies hard.", options: ["lazy", "diligent", "noisy", "fast"], answer: 1, all_keywords: [
-                    { word: 'lazy', translation: '懶惰的', example: 'Don\'t be lazy.', example_translation: '不要懶惰。' },
-                    { word: 'diligent', translation: '勤勉的', example: 'a diligent worker', example_translation: '一名勤奮的工人。' },
-                    { word: 'noisy', translation: '吵鬧的', example: 'a noisy room', example_translation: '一個吵鬧的房間。' },
-                    { word: 'fast', translation: '快的', example: 'a fast car', example_translation: '一輛快車。' }
-                ]},
-                { type: 'reading', question: "The noise ____ the entire neighborhood.", options: ["disturbed", "delivered", "destroyed", "discussed"], answer: 0, all_keywords: [
-                    { word: 'disturbed', translation: '打擾', example: 'The noise disturbed him.', example_translation: '噪音打擾了他。' },
-                    { word: 'delivered', translation: '運送', example: 'He delivered the mail.', example_translation: '他送了信。' },
-                    { word: 'destroyed', translation: '摧毀', example: 'The fire destroyed the house.', example_translation: '火災摧毀了房子。' },
-                    { word: 'discussed', translation: '討論', example: 'They discussed the plan.', example_translation: '他們討論了計畫。' }
-                ]},
-                { type: 'reading', question: "It is ____ to see a rainbow after the rain.", options: ["rare", "right", "common", "correct"], answer: 2, all_keywords: [
-                    { word: 'rare', translation: '稀有的', example: 'a rare bird', example_translation: '一隻稀有的鳥。' },
-                    { word: 'right', translation: '正確的；右邊', example: 'the right answer', example_translation: '正確答案。' },
-                    { word: 'common', translation: '常見的', example: 'a common mistake', example_translation: '一個常見的錯誤。' },
-                    { word: 'correct', translation: '正確的', example: 'Is this correct?', example_translation: '這正確嗎？' }
                 ]}
-                // (More questions follow same pattern to reach 30)
             ],
             'quiz2': [
                 { type: 'reading', question: "If the reinforcements ____ on time, we would have won.", translation: "如果援軍準時____，我們本來會贏的。", options: ["have arrived", "arrived", "had arrived", "would arrive"], answer: 2, all_keywords: [
@@ -332,66 +277,76 @@
                     { word: 'to be sent', translation: '被送出 (不定詞被動)', example: 'I ordered it to be sent.', example_translation: '我下令將它送出。' },
                     { word: 'send', translation: '送 (原形)', example: 'Please send help.', example_translation: '請送援。' },
                     { word: 'sending', translation: '正在送', example: 'He is sending it.', example_translation: '他正在送。' }
-                ]},
-                { type: 'reading', question: "He has been a soldier ____ 2015.", options: ["for", "since", "during", "at"], answer: 1, all_keywords: [
-                    { word: 'for', translation: '持續', example: 'for 5 years', example_translation: '持續5年。' },
-                    { word: 'since', translation: '自從', example: 'since yesterday', example_translation: '自從昨天。' },
-                    { word: 'during', translation: '在...期間', example: 'during the day', example_translation: '在白天。' },
-                    { word: 'at', translation: '在', example: 'at noon', example_translation: '在中午。' }
                 ]}
-                // ... (More grammar questions)
             ],
             'quiz3': [
                 { type: 'listening', question: "Man: Is the fuel truck ready?\nWoman: Not yet, it's being inspected.\n\n(Narrator): What is happening to the truck?", translation: "男：油罐車準備好了嗎？\n女：還沒，正在接受檢查。\n\n(旁白)：這輛卡車正在發生什麼事？", options: ["(A) It is being filled.", "(B) It is being checked.", "(C) It is being washed.", "(D) It is being driven."], answer: 1, all_keywords: [
                     { word: 'inspected', translation: '檢查', example: 'The site was inspected.', example_translation: '現場被視察了。' },
                     { word: 'checked', translation: '檢查', example: 'Check your gear.', example_translation: '檢查裝備。' }
                 ]}
-                // ... (More listening questions)
             ]
         };
 
-        // --- State Management ---
-        let userId = null;
-        let isAuthReady = false;
-        let favoriteKeywords = [];
-        let currentTest = '';
-        let currentQuestions = [];
-        let currentQuestionIndex = 0;
-        let score = 0;
-        let timerInterval;
-        let currentTimerValue = 0;
-        let isTestPaused = false;
-        let quizPassStatus = { quiz1: false, quiz2: false, quiz3: false };
-        let firestoreUnsubscribe = null;
-
         const synth = new Tone.Synth().toDestination();
 
-        // --- Functions ---
+        // --- Core Functions ---
         async function initializeAppFirebase() {
             try {
+                // 1. 環境設定偵測
+                // 優先使用由環境注入的 config (Canvas)，否則使用手動填寫的內容 (GitHub Pages)
+                const userProvidedConfig = {
+                    apiKey: "AIzaSyDQSAW63lnKd3aCCiCt7pSmRa6ZPqOiIZI",
+                    authDomain: "alcpt-f9d8d.firebaseapp.com",
+                    projectId: "alcpt-f9d8d",
+                    storageBucket: "alcpt-f9d8d.firebasestorage.app",
+                    messagingSenderId: "885828022963",
+                    appId: "1:885828022963:web:b18d3e49a19d3840d5b6c6"
+                };
+
+                const config = (typeof __firebase_config !== 'undefined' && __firebase_config) 
+                    ? JSON.parse(__firebase_config) 
+                    : userProvidedConfig;
+
+                // 2. 初始化
+                app = initializeApp(config);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'github-ecl-app';
+
+                // 3. 匿名登入
                 await signInAnonymously(auth);
-                userId = auth.currentUser.uid;
-                isAuthReady = true;
-                loadFavoriteKeywords(appId, userId);
-                showScreen('welcome-screen');
+                
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        isAuthReady = true;
+                        loadFavoriteKeywords(currentAppId, userId);
+                        showScreen('welcome-screen');
+                    }
+                });
+
             } catch (error) {
-                console.error("Firebase Init Failed:", error);
-                document.getElementById('loading-text').innerText = '載入失敗，請重整頁面。';
+                console.error("Firebase Init Error:", error);
+                document.getElementById('loading-text').innerHTML = `載入失敗，請確認 Firebase 設定是否正確。<br><small>${error.message}</small>`;
             }
         }
 
-        function loadFavoriteKeywords(appId, uid) {
+        function loadFavoriteKeywords(id, uid) {
             if (firestoreUnsubscribe) firestoreUnsubscribe();
-            const colRef = collection(db, 'artifacts', appId, 'users', uid, 'favorites');
+            const colRef = collection(db, 'artifacts', id, 'users', uid, 'favorites');
             firestoreUnsubscribe = onSnapshot(colRef, (snap) => {
                 favoriteKeywords = snap.docs.map(doc => doc.data());
                 if (document.getElementById('favorites-modal').style.display === 'flex') showFavoritesModal();
-            }, (err) => console.error("Firestore Listen Err:", err));
+            }, (err) => console.error("Firestore Listen Error:", err));
         }
 
         function showScreen(id) {
             document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
-            document.getElementById(id).style.display = 'flex';
+            const target = document.getElementById(id);
+            if (target) {
+                target.style.display = 'flex';
+                target.classList.add('active-screen');
+            }
         }
 
         function startQuiz(quizId) {
@@ -399,7 +354,6 @@
             currentTest = quizId;
             currentQuestionIndex = 0;
             score = 0;
-            // Get data and shuffle
             currentQuestions = [...alcptQuizBanks[quizId]].sort(() => Math.random() - 0.5);
             
             const titles = { quiz1: '題庫(一): 詞彙片語', quiz2: '題庫(二): 文法結構', quiz3: '題庫(三): 聽力腳本' };
@@ -445,7 +399,6 @@
                 else if (i === idx) b.classList.add('incorrect-answer');
             });
 
-            // TTS Logic
             const correctText = q.options[q.answer];
             const ttsText = q.type === 'listening' ? q.question.split('(Narrator):')[1]?.trim() || q.question : q.question.replace('____', correctText);
             const escapedTTS = ttsText.replace(/'/g, "\\'").replace(/\n/g, ' ');
@@ -453,8 +406,8 @@
             document.getElementById('post-answer-display').innerHTML = `
                 <div class="p-4 bg-gray-900 rounded-xl border border-gray-700">
                     <div class="flex justify-between items-start mb-2">
-                         <p class="font-bold text-yellow-400">解答解析：</p>
-                         <button onclick="speak('${escapedTTS}')" class="text-blue-400 hover:text-blue-300 flex items-center">
+                         <p class="font-bold text-yellow-400">正確答案解答：</p>
+                         <button onclick="speak('${escapedTTS}')" class="text-blue-400 hover:text-blue-300">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M20 4a9 9 0 010 16M4 4a9 9 0 0116 0" /></svg>
                          </button>
                     </div>
@@ -502,8 +455,9 @@
         }
 
         async function toggleFavorite(kw) {
+            const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'github-ecl-app';
             const docId = kw.word.replace(/[\/ \(\)']/g, '_');
-            const docRef = doc(db, 'artifacts', appId, 'users', userId, 'favorites', docId);
+            const docRef = doc(db, 'artifacts', currentAppId, 'users', userId, 'favorites', docId);
             if (favoriteKeywords.some(f => f.word === kw.word)) {
                 await deleteDoc(docRef);
             } else {
@@ -533,7 +487,7 @@
             
             let finalMsg = `得分率：${accuracy}%. (${score}/${currentQuestions.length} 題)`;
             if (isPassed) {
-                finalMsg += `<br><span class="text-green-300">恭喜！您已達到 80% 通過標準。</span>`;
+                finalMsg += `<br><span class="text-green-300 font-bold">恭喜！您已達標。</span>`;
                 if (allPassed) {
                     finalMsg += `<br><br><div class="p-4 bg-yellow-900 border border-yellow-500 rounded-lg text-yellow-200 font-bold">恭喜通過本日所有 ECL 練習！不要忘記到「我的最愛」區複習喔！</div>`;
                 }
@@ -600,8 +554,9 @@
         }
 
         async function restartMission() {
+            const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'github-ecl-app';
+            const snaps = await getDocs(collection(db, 'artifacts', currentAppId, 'users', userId, 'favorites'));
             const batch = writeBatch(db);
-            const snaps = await getDocs(collection(db, 'artifacts', appId, 'users', userId, 'favorites'));
             snaps.forEach(d => batch.delete(d.ref));
             await batch.commit();
             location.reload();
@@ -631,7 +586,14 @@
             favoriteKeywords.forEach(kw => {
                 const item = document.createElement('div');
                 item.className = 'p-4 bg-gray-900 rounded-lg border border-gray-700 mb-2';
-                item.innerHTML = `<div class="flex justify-between"><div><p class="text-teal-300 font-bold">${kw.word}</p><p class="text-gray-400 text-sm">${kw.translation}</p></div><button onclick='toggleFavorite(${JSON.stringify(kw).replace(/'/g, "\\'")})' class="text-red-500">移除</button></div>`;
+                item.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-teal-300 font-bold">${kw.word}</p>
+                            <p class="text-gray-400 text-sm">${kw.translation}</p>
+                        </div>
+                        <button onclick='toggleFavorite(${JSON.stringify(kw).replace(/'/g, "\\'")})' class="text-red-500 font-bold">移除</button>
+                    </div>`;
                 list.appendChild(item);
             });
             document.getElementById('favorites-modal').style.display = 'flex';
@@ -643,7 +605,7 @@
             setTimeout(() => { document.getElementById('favorites-modal').style.display = 'none'; isTestPaused = false; }, 300);
         }
 
-        // Window exports
+        // Global exports
         window.startQuiz = startQuiz;
         window.nextQuestion = nextQuestion;
         window.backToWelcome = backToWelcome;
@@ -657,6 +619,7 @@
         window.cancelExit = cancelExit;
         window.confirmExit = confirmExit;
 
+        // 啟動 Firebase
         window.onload = initializeAppFirebase;
     </script>
 </body>
