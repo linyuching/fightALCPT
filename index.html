@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ALCPT英語能力模擬測驗</title>
+    <title>ECL 英語能力模擬測驗</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -63,29 +63,33 @@
             justify-content: center;
             transition: all 0.2s;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
         }
         .speaker-btn:hover {
             background-color: #2563EB;
             transform: scale(1.1);
         }
         .speaker-btn svg {
-            width: 20px;
-            height: 20px;
+            width: 18px;
+            height: 18px;
         }
         /* 互動式單字 */
         .clickable-word {
             cursor: pointer;
             padding: 0 2px;
             border-radius: 4px;
-            transition: background-color 0.2s;
+            transition: all 0.2s;
+            display: inline-block;
         }
         .clickable-word:hover {
             background-color: rgba(59, 130, 246, 0.3);
             text-decoration: underline;
+            color: #60A5FA;
         }
         .word-highlight {
             background-color: #F59E0B !important;
             color: #000 !important;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -95,9 +99,9 @@
 
         <!-- Screen 0: Loading -->
         <div id="loading-screen" class="screen active-screen flex-col items-center text-center p-6 sm:p-8 bg-gray-800 rounded-2xl shadow-2xl">
-            <h1 class="text-3xl sm:text-4xl font-bold text-yellow-400 mb-6">ALCPT模擬測驗系統</h1>
+            <h1 class="text-3xl sm:text-4xl font-bold text-yellow-400 mb-6">ECL 模擬測驗系統</h1>
             <div class="spinner mb-4"></div>
-            <p id="loading-text" class="text-base sm:text-lg text-gray-300">正在同步雲端資料...</p>
+            <p id="loading-text" class="text-base sm:text-lg text-gray-300">正在同步雲端進度...</p>
         </div>
 
         <!-- Screen 1: Welcome -->
@@ -105,7 +109,7 @@
             <h1 class="text-3xl sm:text-4xl font-bold text-yellow-400 mb-4">ECL 英語能力測驗</h1>
             <p class="text-base sm:text-lg text-gray-300 mb-8 leading-relaxed">
                 請選擇測驗題庫。通過標準為 <span class="text-yellow-400 font-bold text-xl">80%</span>。<br>
-                點選題目中的單字可即時查看翻譯，提供全選項發音解析。
+                <span class="text-blue-300">💡 提示：測驗時可點選題目中的單字查看翻譯與聽發音。</span>
             </p>
             
             <div class="space-y-4 w-full max-w-sm">
@@ -116,7 +120,7 @@
                     題庫 (二)：文法結構 (20題)
                 </button>
                 <button id="btn-quiz3" onclick="startQuiz('quiz3')" class="w-full bg-teal-500 hover:bg-teal-600 text-gray-900 font-bold py-3 px-6 rounded-lg text-lg transition duration-300 transform hover:scale-105">
-                    題庫 (三)：模擬聽力腳本 (20題)
+                    題庫 (三)：聽力測驗腳本 (20題)
                 </button>
             </div>
             
@@ -124,7 +128,7 @@
             
             <div class="space-y-4 w-full max-w-sm">
                 <button onclick="showFavoritesModal()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition duration-300">
-                    查看我的最愛
+                    查看我的最愛單字簿
                 </button>
             </div>
         </div>
@@ -149,10 +153,10 @@
                 </div>
 
                 <div id="question-container" class="text-left">
-                    <!-- NEW: Tooltip area for clickable words -->
-                    <div id="word-tooltip" class="hidden mb-4 p-2 bg-blue-900 border border-blue-400 rounded text-sm text-blue-100 flex justify-between items-center">
+                    <!-- Tooltip for interactive word translation -->
+                    <div id="word-tooltip" class="hidden mb-4 p-3 bg-blue-900 border-l-4 border-blue-400 rounded shadow-lg text-sm text-blue-100 flex justify-between items-center animate-pulse">
                         <span id="tooltip-content"></span>
-                        <button onclick="document.getElementById('word-tooltip').classList.add('hidden')" class="text-blue-300 ml-2 font-bold">&times;</button>
+                        <button onclick="document.getElementById('word-tooltip').classList.add('hidden')" class="text-blue-300 hover:text-white ml-2 font-bold">&times;</button>
                     </div>
 
                     <div id="question-text" class="text-lg sm:text-xl mb-6 text-gray-200 min-h-[60px] leading-relaxed"></div>
@@ -183,7 +187,7 @@
                     回題庫選單
                 </button>
                 <button onclick="restartMission()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
-                    重置所有進度與收藏
+                    重置進度與我的最愛
                 </button>
             </div>
         </div>
@@ -240,7 +244,7 @@
         let quizPassStatus = { quiz1: false, quiz2: false, quiz3: false };
         let firestoreUnsubscribe = null;
 
-        // 題庫資料 (隨機分佈正確答案)
+        // 題庫資料 (隨機分佈正確答案 A, B, C, D)
         const alcptQuizBanks = {
             'quiz1': [
                 { type: 'reading', question: "The officer wants to ____ the security procedures.", translation: "軍官想要____安全程序。", options: ["review", "remove", "reverse", "receive"], answer: 0, all_keywords: [
@@ -268,60 +272,174 @@
                     { word: 'address', translation: '處理(問題)；地址', example: 'Address the issue now.', example_translation: '現在處理這項議題。' }
                 ]},
                 { type: 'reading', question: "The commander will ____ the soldier's complaint.", translation: "指揮官將會____這名士兵的投訴。", options: ["look into", "look over", "look up to", "look down on"], answer: 0, all_keywords: [
-                    { word: 'look into', translation: '調查', example: 'We will look into the matter.', example_translation: '我們會調查這件事。' },
-                    { word: 'look over', translation: '快速瀏覽', example: 'Please look over this report.', example_translation: '請快速看一下這份報告。' },
-                    { word: 'look up to', translation: '尊敬', example: 'He looks up to his father.', example_translation: '他尊敬他的父親。' },
-                    { word: 'look down on', translation: '輕視', example: 'You should not look down on anyone.', example_translation: '你不應該輕視任何人。' }
+                    { word: 'look into', translation: '調查 (片語)', example: 'The police are looking into the case.', example_translation: '警方正在調查這起案件。' },
+                    { word: 'look over', translation: '快速瀏覽', example: 'Look over the report.', example_translation: '瀏覽這份報告。' },
+                    { word: 'look up to', translation: '尊敬', example: 'I look up to my father.', example_translation: '我尊敬我的父親。' },
+                    { word: 'look down on', translation: '輕視', example: 'Don\'t look down on others.', example_translation: '不要輕視他人。' }
                 ]},
                 { type: 'reading', question: "They had to ____ the exercise due to the storm.", translation: "由於暴風雨，他們不得不____演習。", options: ["call on", "call off", "call for", "call out"], answer: 1, all_keywords: [
                     { word: 'call on', translation: '拜訪；呼籲', example: 'He called on me yesterday.', example_translation: '他昨天拜訪了我。' },
-                    { word: 'call off', translation: '取消', example: 'They called off the meeting.', example_translation: '他們取消了會議。' },
-                    { word: 'call for', translation: '要求；需要', example: 'The job calls for patience.', example_translation: '這份工作需要耐心。' },
+                    { word: 'call off', translation: '取消 (片語)', example: 'The game was called off.', example_translation: '比賽被取消了。' },
+                    { word: 'call for', translation: '要求；需要', example: 'This situation calls for action.', example_translation: '這種情況需要採取行動。' },
                     { word: 'call out', translation: '大喊；召集', example: 'He called out my name.', example_translation: '他大喊我的名字。' }
                 ]},
                 { type: 'reading', question: "I cannot ____ this noise any longer.", translation: "我再也無法____這種噪音了。", options: ["put on", "put off", "put up with", "put out"], answer: 2, all_keywords: [
-                    { word: 'put on', translation: '穿上', example: 'Put on your jacket.', example_translation: '穿上你的夾克。' },
-                    { word: 'put off', translation: '延期', example: 'Don\'t put off your homework.', example_translation: '不要拖延你的作業。' },
-                    { word: 'put up with', translation: '忍受', example: 'I can\'t put up with his attitude.', example_translation: '我無法忍受他的態度。' },
+                    { word: 'put on', translation: '穿上；增加', example: 'Put on your coat.', example_translation: '穿上你的外套。' },
+                    { word: 'put off', translation: '延期', example: 'Don\'t put off your study.', example_translation: '不要延遲你的學習。' },
+                    { word: 'put up with', translation: '忍受 (片語)', example: 'I can\'t put up with it.', example_translation: '我無法忍受這件事。' },
                     { word: 'put out', translation: '熄滅', example: 'Put out the fire.', example_translation: '熄滅火。' }
                 ]},
                 { type: 'reading', question: "The patrol is in danger of ____ ammunition.", translation: "巡邏隊有____彈藥的危險。", options: ["running into", "running over", "running away", "running out of"], answer: 3, all_keywords: [
-                    { word: 'running into', translation: '偶然遇見', example: 'I ran into him at the store.', example_translation: '我在商店偶然遇見他。' },
+                    { word: 'running into', translation: '偶然遇見', example: 'I ran into Tom today.', example_translation: '我今天巧遇湯姆。' },
                     { word: 'running over', translation: '輾過', example: 'The car ran over a can.', example_translation: '車子輾過一個罐子。' },
                     { word: 'running away', translation: '逃跑', example: 'The thief ran away.', example_translation: '小偷跑走了。' },
-                    { word: 'running out of', translation: '用完', example: 'We are running out of time.', example_translation: '我們的時間快用完了。' }
+                    { word: 'running out of', translation: '用完 (片語)', example: 'We are running out of time.', example_translation: '我們的時間快用完了。' }
                 ]},
                 { type: 'reading', question: "Our vehicle ____ in the middle of the desert.", translation: "我們的車輛在沙漠中央____了。", options: ["broke down", "broke into", "broke up", "broke out"], answer: 0, all_keywords: [
-                    { word: 'broke down', translation: '故障 (break down的過去式)', example: 'My car broke down.', example_translation: '我的車拋錨了。' },
+                    { word: 'broke down', translation: '故障 (片語)', example: 'My car broke down.', example_translation: '我的車拋錨了。' },
                     { word: 'broke into', translation: '闖入', example: 'Someone broke into my house.', example_translation: '有人闖入我的房子。' },
-                    { word: 'broke up', translation: '分手；解散', example: 'The band broke up last year.', example_translation: '那個樂團去年解散了。' },
-                    { word: 'broke out', translation: '爆發', example: 'A fire broke out in the building.', example_translation: '大樓爆發了火災。' }
+                    { word: 'broke up', translation: '分手；解散', example: 'The band broke up.', example_translation: '那個樂團解散了。' },
+                    { word: 'broke out', translation: '爆發', example: 'War broke out.', example_translation: '戰爭爆發了。' }
                 ]},
                 { type: 'reading', question: "The soldiers were ordered to ____ the mission at dawn.", translation: "士兵們被命令在黎明時____任務。", options: ["carry on", "carry out", "carry off", "carry over"], answer: 1, all_keywords: [
                     { word: 'carry on', translation: '繼續', example: 'Carry on with your work.', example_translation: '繼續你的工作。' },
-                    { word: 'carry out', translation: '執行', example: 'They will carry out the plan.', example_translation: '他們將執行這項計畫。' },
-                    { word: 'carry off', translation: '成功完成(困難的事)', example: 'She carried off the speech well.', example_translation: '她成功地完成了演講。' },
-                    { word: 'carry over', translation: '延續', example: 'The meeting will carry over to tomorrow.', example_translation: '會議將延續到明天。' }
+                    { word: 'carry out', translation: '執行 (片語)', example: 'Carry out the order.', example_translation: '執行命令。' },
+                    { word: 'carry off', translation: '成功完成', example: 'She carried off the win.', example_translation: '她成功奪冠。' },
+                    { word: 'carry over', translation: '延續', example: 'The meeting carried over.', example_translation: '會議延續了。' }
+                ]},
+                { type: 'reading', question: "We need to ____ the security at the front gate.", translation: "我們需要____前門的安全。", options: ["beef up", "back down", "break in", "blow up"], answer: 0, all_keywords: [
+                    { word: 'beef up', translation: '加強 (片語)', example: 'We need to beef up security.', example_translation: '我們需要加強安保。' },
+                    { word: 'back down', translation: '退讓', example: 'He never backs down.', example_translation: '他從不退讓。' },
+                    { word: 'break in', translation: '闖入', example: 'Try to break in.', example_translation: '試圖闖入。' },
+                    { word: 'blow up', translation: '爆炸', example: 'The bridge blew up.', example_translation: '橋爆炸了。' }
+                ]},
+                { type: 'reading', question: "Please ____ the lights when you leave.", options: ["turn on", "turn off", "turn up", "turn down"], answer: 1, all_keywords: [
+                    { word: 'turn on', translation: '打開', example: 'Turn on the TV.', example_translation: '打開電視。' },
+                    { word: 'turn off', translation: '關掉 (片語)', example: 'Turn off the lights.', example_translation: '關燈。' },
+                    { word: 'turn up', translation: '調高音量', example: 'Turn it up.', example_translation: '開大聲點。' },
+                    { word: 'turn down', translation: '拒絕；調小聲', example: 'He turned down the offer.', example_translation: '他拒絕了那個提議。' }
+                ]},
+                { type: 'reading', question: "The mechanic will ____ the old parts.", options: ["take over", "take apart", "take back", "take off"], answer: 1, all_keywords: [
+                    { word: 'take over', translation: '接管', example: 'He took over the company.', example_translation: '他接管了公司。' },
+                    { word: 'take apart', translation: '拆開 (片語)', example: 'He took apart the engine.', example_translation: '他拆開了引擎。' },
+                    { word: 'take back', translation: '拿回', example: 'Take it back.', example_translation: '把它拿回去。' },
+                    { word: 'take off', translation: '起飛；脫下', example: 'The plane took off.', example_translation: '飛機起飛了。' }
+                ]},
+                { type: 'reading', question: "I didn't mean to ____ your secret.", options: ["give in", "give up", "give away", "give back"], answer: 2, all_keywords: [
+                    { word: 'give in', translation: '讓步', example: 'I won\'t give in.', example_translation: '我不會讓步。' },
+                    { word: 'give up', translation: '放棄', example: 'Don\'t give up.', example_translation: '別放棄。' },
+                    { word: 'give away', translation: '洩漏 (片語)', example: 'Don\'t give away my secret.', example_translation: '別洩漏我的秘密。' },
+                    { word: 'give back', translation: '歸還', example: 'Give back my pen.', example_translation: '把筆還我。' }
+                ]},
+                { type: 'reading', question: "We can ____ the results on the board.", options: ["get by", "get up", "check out", "check in"], answer: 2, all_keywords: [
+                    { word: 'get by', translation: '過得去', example: 'I can get by with my salary.', example_translation: '我的薪水還過得去。' },
+                    { word: 'get up', translation: '起床', example: 'Get up early.', example_translation: '早點起床。' },
+                    { word: 'check out', translation: '查看 (片語)', example: 'Check out the new car.', example_translation: '看看那台新車。' },
+                    { word: 'check in', translation: '登記', example: 'Check in at the hotel.', example_translation: '在旅館登記。' }
+                ]},
+                { type: 'reading', question: "The truck ____ speed as it went downhill.", options: ["picked up", "picked on", "picked out", "picked off"], answer: 0, all_keywords: [
+                    { word: 'picked up', translation: '增加 (片語)', example: 'The car picked up speed.', example_translation: '車子加速了。' },
+                    { word: 'picked on', translation: '找碴', example: 'Don\'t pick on me.', example_translation: '別對我找碴。' },
+                    { word: 'picked out', translation: '挑選', example: 'She picked out a dress.', example_translation: '她挑了一件裙子。' },
+                    { word: 'picked off', translation: '摘掉', example: 'Pick off the leaves.', example_translation: '摘掉葉子。' }
+                ]},
+                { type: 'reading', question: "The soldiers were told to ____ the area.", options: ["fill in", "clear out", "clear up", "fill up"], answer: 1, all_keywords: [
+                    { word: 'fill in', translation: '填寫', example: 'Fill in the form.', example_translation: '填寫表格。' },
+                    { word: 'clear out', translation: '清理 (片語)', example: 'Clear out your locker.', example_translation: '清理你的置物櫃。' },
+                    { word: 'clear up', translation: '澄清；放晴', example: 'The weather cleared up.', example_translation: '天氣放晴了。' },
+                    { word: 'fill up', translation: '填滿', example: 'Fill up the tank.', example_translation: '加滿油箱。' }
+                ]},
+                { type: 'reading', question: "He will ____ for the missing soldier.", options: ["look for", "look after", "look at", "look like"], answer: 0, all_keywords: [
+                    { word: 'look for', translation: '尋找 (片語)', example: 'Look for your keys.', example_translation: '找你的鑰匙。' },
+                    { word: 'look after', translation: '照顧', example: 'Look after the baby.', example_translation: '照顧寶寶。' },
+                    { word: 'look at', translation: '看著', example: 'Look at the map.', example_translation: '看地圖。' },
+                    { word: 'look like', translation: '看起來像', example: 'He looks like his father.', example_translation: '他長得像他父親。' }
+                ]},
+                { type: 'reading', question: "The supplies will ____ by tomorrow.", options: ["go on", "run out", "run in", "go back"], answer: 1, all_keywords: [
+                    { word: 'go on', translation: '繼續', example: 'Go on with your story.', example_translation: '繼續你的故事。' },
+                    { word: 'run out', translation: '用完 (片語)', example: 'Supplies are running out.', example_translation: '物資快用完了。' },
+                    { word: 'run in', translation: '跑進', example: 'Run in the rain.', example_translation: '在雨中跑步。' },
+                    { word: 'go back', translation: '回去', example: 'Go back home.', example_translation: '回家吧。' }
+                ]},
+                { type: 'reading', question: "We should ____ the meeting until Monday.", options: ["put on", "put out", "put off", "put away"], answer: 2, all_keywords: [
+                    { word: 'put on', translation: '穿上', example: 'Put on your shoes.', example_translation: '穿鞋。' },
+                    { word: 'put out', translation: '熄滅', example: 'Put out the light.', example_translation: '關燈。' },
+                    { word: 'put off', translation: '延期 (片語)', example: 'Don\'t put off the task.', example_translation: '別延誤任務。' },
+                    { word: 'put away', translation: '收好', example: 'Put away your toys.', example_translation: '把玩具收好。' }
+                ]},
+                { type: 'reading', question: "He needs to ____ his resume before the interview.", options: ["fix up", "follow up", "fill up", "face up"], answer: 0, all_keywords: [
+                    { word: 'fix up', translation: '整理；修理 (片語)', example: 'I need to fix up my car.', example_translation: '我需要修理我的車。' },
+                    { word: 'follow up', translation: '跟進', example: 'Follow up the email.', example_translation: '跟進那封郵件。' },
+                    { word: 'fill up', translation: '加滿', example: 'Fill up the tank.', example_translation: '加滿油。' },
+                    { word: 'face up', translation: '面對', example: 'Face up to the truth.', example_translation: '面對現實。' }
+                ]},
+                { type: 'reading', question: "The airplane is about to ____.", options: ["take over", "take in", "take off", "take out"], answer: 2, all_keywords: [
+                    { word: 'take over', translation: '接手', example: 'Take over the controls.', example_translation: '接管控制權。' },
+                    { word: 'take in', translation: '吸收', example: 'Take in the view.', example_translation: '飽覽景色。' },
+                    { word: 'take off', translation: '起飛 (片語)', example: 'The plane took off.', example_translation: '飛機起飛了。' },
+                    { word: 'take out', translation: '拿出', example: 'Take out the trash.', example_translation: '倒垃圾。' }
+                ]},
+                { type: 'reading', question: "You should ____ the form and sign it.", options: ["fill out", "find out", "figure out", "fall out"], answer: 0, all_keywords: [
+                    { word: 'fill out', translation: '填寫 (片語)', example: 'Fill out the form.', example_translation: '填寫這張表。' },
+                    { word: 'find out', translation: '發現', example: 'Find out the truth.', example_translation: '查明真相。' },
+                    { word: 'figure out', translation: '理解', example: 'Figure out the math.', example_translation: '解開這題數學。' },
+                    { word: 'fall out', translation: '爭吵；掉出', example: 'They fell out.', example_translation: '他們吵架了。' }
+                ]},
+                { type: 'reading', question: "Can you ____ what happened yesterday?", options: ["point at", "point out", "point to", "point off"], answer: 1, all_keywords: [
+                    { word: 'point at', translation: '指著', example: 'Don\'t point at people.', example_translation: '別用手指人。' },
+                    { word: 'point out', translation: '指出 (片語)', example: 'He pointed out my error.', example_translation: '他指出了我的錯誤。' },
+                    { word: 'point to', translation: '指向', example: 'Point to the map.', example_translation: '指向地圖。' },
+                    { word: 'point off', translation: '無此用法', example: 'N/A', example_translation: 'N/A' }
+                ]},
+                { type: 'reading', question: "The General will ____ the base next week.", options: ["stop by", "stop at", "stop off", "stop in"], answer: 0, all_keywords: [
+                    { word: 'stop by', translation: '順道拜訪 (片語)', example: 'Stop by my office.', example_translation: '順便來我辦公室。' },
+                    { word: 'stop at', translation: '停在', example: 'Stop at the sign.', example_translation: '在標誌前停下。' },
+                    { word: 'stop off', translation: '中途停留', example: 'Stop off at the shop.', example_translation: '在中途商店停一下。' },
+                    { word: 'stop in', translation: '短暫訪問', example: 'He stopped in.', example_translation: '他短暫造訪。' }
+                ]},
+                { type: 'reading', question: "I will ____ the data one more time.", options: ["go through", "go over", "go in", "go by"], answer: 1, all_keywords: [
+                    { word: 'go through', translation: '經歷；審查', example: 'Go through the list.', example_translation: '看過清單。' },
+                    { word: 'go over', translation: '複習；檢查 (片語)', example: 'Go over your notes.', example_translation: '複習筆記。' },
+                    { word: 'go in', translation: '進入', example: 'Go in the room.', example_translation: '進房。' },
+                    { word: 'go by', translation: '經過', example: 'Time goes by.', example_translation: '時間飛逝。' }
+                ]},
+                { type: 'reading', question: "The mission was ____ because of the weather.", options: ["called off", "called out", "called on", "called for"], answer: 0, all_keywords: [
+                    { word: 'called off', translation: '取消 (片語)', example: 'The trip was called off.', example_translation: '旅行取消了。' },
+                    { word: 'called out', translation: '呼叫', example: 'He called out.', example_translation: '他大喊。' },
+                    { word: 'called on', translation: '點名；訪問', example: 'The teacher called on me.', example_translation: '老師點我名。' },
+                    { word: 'called for', translation: '需要', example: 'It calls for help.', example_translation: '這需要幫助。' }
+                ]},
+                { type: 'reading', question: "You need to ____ the engine before you drive.", options: ["warm up", "wake up", "wash up", "write up"], answer: 0, all_keywords: [
+                    { word: 'warm up', translation: '熱機 (片語)', example: 'Warm up the car.', example_translation: '先熱車。' },
+                    { word: 'wake up', translation: '醒來', example: 'Wake up early.', example_translation: '早點醒來。' },
+                    { word: 'wash up', translation: '洗手', example: 'Wash up for dinner.', example_translation: '洗手吃晚餐。' },
+                    { word: 'write up', translation: '寫成報告', example: 'Write up the report.', example_translation: '把報告寫好。' }
+                ]},
+                { type: 'reading', question: "He finally ____ a good idea.", options: ["came up with", "came across", "came back", "came on"], answer: 0, all_keywords: [
+                    { word: 'came up with', translation: '想出 (片語)', example: 'He came up with a plan.', example_translation: '他想出了一個計畫。' },
+                    { word: 'came across', translation: '偶然發現', example: 'I came across a photo.', example_translation: '我偶然發現一張照片。' },
+                    { word: 'came back', translation: '回來', example: 'Come back soon.', example_translation: '快點回來。' },
+                    { word: 'came on', translation: '加油', example: 'Come on!', example_translation: '加油！' }
+                ]},
+                { type: 'reading', question: "Don't ____! You can do it.", options: ["give up", "give in", "give away", "give back"], answer: 0, all_keywords: [
+                    { word: 'give up', translation: '放棄 (片語)', example: 'Never give up.', example_translation: '永不放棄。' },
+                    { word: 'give in', translation: '屈服', example: 'Don\'t give in.', example_translation: '別屈服。' },
+                    { word: 'give away', translation: '贈送', example: 'Give away books.', example_translation: '贈書。' },
+                    { word: 'give back', translation: '歸還', example: 'Give back the pen.', example_translation: '歸還這支筆。' }
                 ]}
             ],
             'quiz2': [
                 { type: 'reading', question: "If the reinforcements ____ on time, we would have won.", translation: "如果援軍準時____，我們本來會贏的。", options: ["have arrived", "arrived", "had arrived", "would arrive"], answer: 2, all_keywords: [
-                    { word: 'have arrived', translation: '已經到達 (現在完成式)', example: 'They have arrived now.', example_translation: '他們現在到了。' },
-                    { word: 'arrived', translation: '到達 (過去式)', example: 'They arrived late.', example_translation: '他們遲到了。' },
-                    { word: 'had arrived', translation: '已經到達 (過去完成式)', example: 'If he had arrived earlier...', example_translation: '如果他早點到...' },
-                    { word: 'would arrive', translation: '將會到達 (假設)', example: 'They said they would arrive.', example_translation: '他們說他們會到。' }
-                ]},
-                { type: 'reading', question: "The General ordered the supplies ____ immediately.", translation: "將軍下令補給品要立即____。", options: ["sent", "to be sent", "send", "sending"], answer: 1, all_keywords: [
-                    { word: 'sent', translation: '送 (過去式)', example: 'I sent the mail.', example_translation: '我寄了信。' },
-                    { word: 'to be sent', translation: '被送出 (不定詞被動)', example: 'I ordered it to be sent.', example_translation: '我下令將它送出。' },
-                    { word: 'send', translation: '送 (原形)', example: 'Please send help.', example_translation: '請送援。' },
-                    { word: 'sending', translation: '正在送', example: 'He is sending it.', example_translation: '他正在送。' }
+                    { word: 'have arrived', translation: '已經到達', example: 'They have arrived.', example_translation: '他們到了。' },
+                    { word: 'arrived', translation: '到達', example: 'They arrived late.', example_translation: '他們遲到了。' },
+                    { word: 'had arrived', translation: '已經到達 (過去完成)', example: 'If he had arrived earlier...', example_translation: '如果他早點到...' },
+                    { word: 'would arrive', translation: '將會到達', example: 'He would arrive soon.', example_translation: '他快到了。' }
                 ]}
             ],
             'quiz3': [
                 { type: 'listening', question: "Man: Is the fuel truck ready?\nWoman: Not yet, it's being inspected.\n\n(Narrator): What is happening to the truck?", translation: "男：油罐車準備好了嗎？\n女：還沒，正在接受檢查。\n\n(旁白)：這輛卡車正在發生什麼事？", options: ["(A) It is being filled.", "(B) It is being checked.", "(C) It is being washed.", "(D) It is being driven."], answer: 1, all_keywords: [
-                    { word: 'inspected', translation: '檢查', example: 'The site was inspected.', example_translation: '現場被視察了。' },
-                    { word: 'checked', translation: '檢查', example: 'Check your gear.', example_translation: '檢查裝備。' }
+                    { word: 'inspected', translation: '檢查 (單字)', example: 'The car was inspected.', example_translation: '車子受檢了。' },
+                    { word: 'checked', translation: '核對 (單字)', example: 'Check the list.', example_translation: '核對清單。' }
                 ]}
             ]
         };
@@ -371,13 +489,13 @@
             const colRef = collection(db, 'artifacts', id, 'users', uid, 'favorites');
             firestoreUnsubscribe = onSnapshot(colRef, (snap) => {
                 favoriteKeywords = snap.docs.map(doc => doc.data());
-                if (document.getElementById('favorites-modal').style.display === 'flex') showFavoritesModal();
-                const kwDisp = document.getElementById('keywords-display');
-                if (kwDisp && kwDisp.innerHTML !== '') {
-                    const currentQ = currentQuestions[currentQuestionIndex];
-                    if (currentQ) renderKeywords(currentQ.all_keywords);
+                // 即時重新渲染解析清單中的愛心
+                const currentQ = currentQuestions[currentQuestionIndex];
+                if (currentQ && document.getElementById('keywords-display').innerHTML !== '') {
+                    renderKeywords(currentQ.all_keywords);
                 }
-            });
+                if (document.getElementById('favorites-modal').style.display === 'flex') showFavoritesModal();
+            }, (err) => console.error("Firestore Listen Error:", err));
         }
 
         function showScreen(id) {
@@ -407,37 +525,39 @@
             showScreen('test-screen');
         }
 
-        // NEW: Function to wrap text words with clickable spans
+        // 智慧型單字包裝：將題目中的英文單字轉為可點選連結
         function wrapWords(text) {
-            // Regex to split by spaces while keeping punctuation attached to words
             return text.split(' ').map(word => {
-                // Clean the word for lookup (remove trailing punctuation)
                 const cleanWord = word.replace(/[.,!?;:()]/g, "").toLowerCase();
                 return `<span class="clickable-word" data-word="${cleanWord}" onclick="handleWordClick(this, '${cleanWord}')">${word}</span>`;
             }).join(' ');
         }
 
-        // NEW: Handler for clicking a word in the question
-        function handleWordClick(element, cleanWord) {
-            // Highlight current word
+        // 點選題目單字處理邏輯
+        function handleWordClick(element, word) {
             document.querySelectorAll('.clickable-word').forEach(el => el.classList.remove('word-highlight'));
             element.classList.add('word-highlight');
 
             const tooltip = document.getElementById('word-tooltip');
             const content = document.getElementById('tooltip-content');
-            
-            // Try to find the word in current question's keywords
             const currentQ = currentQuestions[currentQuestionIndex];
-            const foundKeyword = currentQ.all_keywords?.find(kw => kw.word.toLowerCase() === cleanWord);
 
-            if (foundKeyword) {
-                content.innerHTML = `<strong>${foundKeyword.word}</strong>: ${foundKeyword.translation}`;
+            // 片語匹配邏輯：檢查點選的字是否為題庫片語的一部分
+            let found = currentQ.all_keywords?.find(kw => kw.word.toLowerCase() === word);
+            
+            // 如果沒直接匹配，嘗試模糊匹配片語 (如點選 "look" 匹配 "look into")
+            if (!found) {
+                found = currentQ.all_keywords?.find(kw => kw.word.toLowerCase().includes(word));
+            }
+
+            if (found) {
+                content.innerHTML = `<strong>${found.word}</strong>: ${found.translation}`;
             } else {
-                content.innerHTML = `<strong>${cleanWord}</strong>: (點選下方「全選項解析」查看相關單字)`;
+                content.innerHTML = `<strong>${word}</strong>: (點選下方「全選項解析」查看完整內容)`;
             }
             
             tooltip.classList.remove('hidden');
-            speak(cleanWord); // Auto speak on click
+            speak(word); // 自動播放發音
         }
 
         function loadQuestion() {
@@ -453,7 +573,6 @@
             document.getElementById('progress-bar').style.width = `${progress}%`;
             document.getElementById('question-counter').textContent = `Q: ${currentQuestionIndex + 1}/${currentQuestions.length}`;
             
-            // Apply wrapWords to interactive text
             document.getElementById('question-text').innerHTML = wrapWords(q.question).replace(/\n/g, '<br>');
             
             q.options.forEach((opt, idx) => {
@@ -482,9 +601,9 @@
             const escapedTTS = ttsText.replace(/'/g, "\\'").replace(/\n/g, ' ');
 
             document.getElementById('post-answer-display').innerHTML = `
-                <div class="p-4 bg-gray-900 rounded-xl border border-gray-700">
+                <div class="p-4 bg-gray-900 rounded-xl border border-gray-700 shadow-inner">
                     <div class="flex justify-between items-center mb-3">
-                         <p class="font-bold text-yellow-400">正確答案解答：</p>
+                         <p class="font-bold text-yellow-400">解答解析 (可聽題目發音)：</p>
                          <button onclick="speak('${escapedTTS}')" class="speaker-btn" title="聽全句發音">
                             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M20 4a9 9 0 010 16M4 4a9 9 0 0116 0" /></svg>
                          </button>
@@ -497,7 +616,7 @@
 
             const kwBtn = document.createElement('button');
             kwBtn.className = 'bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 px-6 rounded-lg transition shadow-lg';
-            kwBtn.textContent = '查看全選項解析';
+            kwBtn.textContent = '查看全選項解析與例句';
             kwBtn.onclick = () => renderKeywords(q.all_keywords);
             document.getElementById('post-answer-actions').appendChild(kwBtn);
 
@@ -524,7 +643,8 @@
                                 </button>
                                 <span class="text-gray-300 font-medium">${kw.translation}</span>
                             </div>
-                            <button onclick='toggleFavorite(${kwJSON})' class="hover:scale-110 transition">
+                            <!-- 改良版愛心收藏按鈕 -->
+                            <button onclick='toggleFavorite(${kwJSON})' class="hover:scale-110 transition p-2">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 ${isFav?'text-red-500':'text-gray-500 opacity-50'}" viewBox="0 0 20 20" fill="currentColor">
                                     <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"/>
                                 </svg>
@@ -533,9 +653,8 @@
                         <div class="bg-gray-800 p-2 rounded border border-gray-600 mt-2">
                             <div class="flex items-center space-x-2">
                                 <p class="text-xs text-gray-400 italic flex-grow">${kw.example}</p>
-                                <!-- NEW: Speaker button for example sentence -->
                                 <button onclick="speak('${escapedExample}')" class="text-blue-400 hover:text-blue-300" title="例句發音">
-                                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path d="M11 5L6 9H2v2h4l5 4V5z"/></svg>
+                                    <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path d="M11 5L6 9H2v2h4l5 4V5z"/></svg>
                                 </button>
                             </div>
                             <p class="text-xs text-gray-500 mt-1">${kw.example_translation}</p>
@@ -549,13 +668,20 @@
 
         async function toggleFavorite(kw) {
             const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'github-ecl-app';
-            const docId = kw.word.replace(/[\/ \(\)']/g, '_');
+            // 安全處理 ID：移除空格與所有特殊符號，確保 Firestore 路徑合法
+            const docId = kw.word.replace(/[^a-zA-Z0-9]/g, '_');
             const docRef = doc(db, 'artifacts', currentAppId, 'users', userId, 'favorites', docId);
+            
             const isAlreadyFav = favoriteKeywords.some(f => f.word === kw.word);
             try {
-                if (isAlreadyFav) await deleteDoc(docRef);
-                else await setDoc(docRef, kw);
-            } catch (err) { console.error("收藏失敗:", err); }
+                if (isAlreadyFav) {
+                    await deleteDoc(docRef);
+                } else {
+                    await setDoc(docRef, kw);
+                }
+            } catch (err) {
+                console.error("收藏操作失敗:", err);
+            }
         }
 
         function nextQuestion() {
@@ -678,12 +804,12 @@
                 item.innerHTML = `
                     <div>
                         <div class="flex items-center space-x-2">
-                            <p class="text-teal-300 font-bold">${kw.word}</p>
-                            <button onclick="speak('${kw.word.replace(/'/g, "\\'")}')" class="text-blue-400"><svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path d="M11 5L6 9H2v2h4l5 4V5z"/></svg></button>
+                            <p class="text-teal-300 font-bold text-lg">${kw.word}</p>
+                            <button onclick="speak('${kw.word.replace(/'/g, "\\'")}')" class="text-blue-400 hover:text-blue-300"><svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path d="M11 5L6 9H2v2h4l5 4V5z"/></svg></button>
                         </div>
                         <p class="text-gray-400 text-sm">${kw.translation}</p>
                     </div>
-                    <button onclick='toggleFavorite(${JSON.stringify(kw).replace(/'/g, "\\'")})' class="text-red-500 font-bold px-3 py-1 bg-red-900 bg-opacity-30 rounded hover:bg-opacity-50">移除</button>`;
+                    <button onclick='toggleFavorite(${JSON.stringify(kw).replace(/'/g, "\\'")})' class="text-red-500 font-bold px-3 py-1 bg-red-900 bg-opacity-30 rounded hover:bg-opacity-50 transition">移除</button>`;
                 list.appendChild(item);
             });
             document.getElementById('favorites-modal').style.display = 'flex';
@@ -695,7 +821,7 @@
             setTimeout(() => { document.getElementById('favorites-modal').style.display = 'none'; isTestPaused = false; }, 300);
         }
 
-        // Global exports
+        // Global exports for HTML attributes
         window.startQuiz = startQuiz;
         window.nextQuestion = nextQuestion;
         window.backToWelcome = backToWelcome;
