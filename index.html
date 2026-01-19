@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ECL 英語能力模擬測驗</title>
+    <title>ALCPT英語能力模擬測驗</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -52,6 +52,26 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        /* 發音按鈕強化 */
+        .speaker-btn {
+            background-color: #3B82F6;
+            color: white;
+            border-radius: 50%;
+            padding: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .speaker-btn:hover {
+            background-color: #2563EB;
+            transform: scale(1.1);
+        }
+        .speaker-btn svg {
+            width: 20px;
+            height: 20px;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-2 sm:p-4">
@@ -62,7 +82,7 @@
         <div id="loading-screen" class="screen active-screen flex-col items-center text-center p-6 sm:p-8 bg-gray-800 rounded-2xl shadow-2xl">
             <h1 class="text-3xl sm:text-4xl font-bold text-yellow-400 mb-6">ECL 模擬測驗系統</h1>
             <div class="spinner mb-4"></div>
-            <p id="loading-text" class="text-base sm:text-lg text-gray-300">正在準備測驗內容...</p>
+            <p id="loading-text" class="text-base sm:text-lg text-gray-300">正在同步雲端資料...</p>
         </div>
 
         <!-- Screen 1: Welcome -->
@@ -92,7 +112,7 @@
                     查看我的最愛 (雲端複習)
                 </button>
             </div>
-             <p class="text-sm text-gray-400 mt-8 italic">Don't give up. The more you practice, the better you get!</p>
+             <p class="text-sm text-gray-400 mt-8 italic">堅持練習是通往成功的唯一道路！</p>
         </div>
 
         <!-- Screen 2: Test -->
@@ -104,7 +124,7 @@
                         <div id="question-counter" class="text-sm sm:text-lg text-gray-400 font-mono"></div>
                         <button onclick="pauseTest()" class="text-purple-300 hover:text-purple-200 flex items-center space-x-1 p-2 bg-gray-700 rounded-lg">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg>
-                            <span class="text-sm sm:text-lg font-mono">收藏</span>
+                            <span class="text-sm sm:text-lg font-mono">複習</span>
                         </button>
                         <div id="timer" class="text-base sm:text-xl font-mono bg-gray-700 px-3 sm:px-4 py-2 rounded-lg">--:--</div>
                     </div>
@@ -116,7 +136,6 @@
 
                 <div id="question-container" class="text-left">
                     <div id="question-text" class="text-lg sm:text-xl mb-6 text-gray-200 min-h-[60px]"></div>
-                    <div id="audio-visualizer" class="mb-6"></div> 
                     <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
                     <div id="post-answer-actions" class="mt-6 flex flex-wrap gap-2"></div>
                     <div id="post-answer-display" class="mt-4"></div>
@@ -263,6 +282,66 @@
                     { word: 'carry out', translation: '執行', example: 'They will carry out the plan.', example_translation: '他們將執行這項計畫。' },
                     { word: 'carry off', translation: '成功完成(困難的事)', example: 'She carried off the speech well.', example_translation: '她成功地完成了演講。' },
                     { word: 'carry over', translation: '延續', example: 'The meeting will carry over to tomorrow.', example_translation: '會議將延續到明天。' }
+                ]},
+                { type: 'reading', question: "What is the ____ of rank for that officer?", translation: "那位軍官的軍階____是什麼？", options: ["grade", "graph", "group", "ground"], answer: 0, all_keywords: [
+                    { word: 'grade', translation: '等級；階級', example: 'He is a high-grade officer.', example_translation: '他是一名高級軍官。' },
+                    { word: 'graph', translation: '圖表', example: 'Draw a graph.', example_translation: '畫一張圖表。' },
+                    { word: 'group', translation: '團體', example: 'A group of soldiers.', example_translation: '一群士兵。' },
+                    { word: 'ground', translation: '地面', example: 'Sit on the ground.', example_translation: '坐在地上。' }
+                ]},
+                { type: 'reading', question: "The General is very ____; he expects everyone to obey.", translation: "將軍非常____；他要求每個人都要服從。", options: ["strong", "strict", "strange", "straight"], answer: 1, all_keywords: [
+                    { word: 'strong', translation: '強壯的', example: 'a strong man', example_translation: '強壯的男人。' },
+                    { word: 'strict', translation: '嚴格的', example: 'He is a strict teacher.', example_translation: '他是一位嚴格的老師。' },
+                    { word: 'strange', translation: '奇怪的', example: 'a strange noise', example_translation: '奇怪的噪音。' },
+                    { word: 'straight', translation: '筆直的', example: 'a straight line', example_translation: '一條直線。' }
+                ]},
+                { type: 'reading', question: "Please ____ your seatbelt before the flight.", translation: "請在飛行前____您的安全帶。", options: ["finish", "follow", "fasten", "forget"], answer: 2, all_keywords: [
+                    { word: 'finish', translation: '完成', example: 'Finish your meal.', example_translation: '吃完你的飯。' },
+                    { word: 'follow', translation: '跟隨', example: 'Follow me.', example_translation: '跟我來。' },
+                    { word: 'fasten', translation: '繫緊', example: 'Fasten your seatbelt.', example_translation: '繫好安全帶。' },
+                    { word: 'forget', translation: '忘記', example: 'Don\'t forget.', example_translation: '別忘了。' }
+                ]},
+                { type: 'reading', question: "The new equipment is very ____ to use.", translation: "這台新設備用起來非常____。", options: ["hard", "high", "hot", "handy"], answer: 3, all_keywords: [
+                    { word: 'hard', translation: '硬的；困難的', example: 'It is hard work.', example_translation: '這是辛苦的工作。' },
+                    { word: 'high', translation: '高的', example: 'a high mountain', example_translation: '一座高山。' },
+                    { word: 'hot', translation: '熱的', example: 'hot water', example_translation: '熱水。' },
+                    { word: 'handy', translation: '便利的；手邊的', example: 'It is very handy.', example_translation: '這非常方便。' }
+                ]},
+                { type: 'reading', question: "The troops had to ____ their positions at night.", translation: "部隊必須在夜間____他們的陣地。", options: ["abandon", "accept", "admire", "advise"], answer: 0, all_keywords: [
+                    { word: 'abandon', translation: '放棄；拋棄', example: 'They abandoned the ship.', example_translation: '他們棄船了。' },
+                    { word: 'accept', translation: '接受', example: 'Accept the offer.', example_translation: '接受提議。' },
+                    { word: 'admire', translation: '欽佩', example: 'I admire your courage.', example_translation: '我欽佩你的勇氣。' },
+                    { word: 'advise', translation: '建議', example: 'Advise the commander.', example_translation: '建議指揮官。' }
+                ]},
+                { type: 'reading', question: "The map showed an ____ path through the woods.", options: ["old", "alternative", "easy", "long"], answer: 1, all_keywords: [
+                    { word: 'old', translation: '舊的', example: 'old clothes', example_translation: '舊衣服。' },
+                    { word: 'alternative', translation: '替代的', example: 'an alternative route', example_translation: '一條替代路線。' },
+                    { word: 'easy', translation: '容易的', example: 'an easy task', example_translation: '一項容易的任務。' },
+                    { word: 'long', translation: '長的', example: 'a long road', example_translation: '一條長路。' }
+                ]},
+                { type: 'reading', question: "The medicine will ____ your pain.", options: ["help", "hurt", "hinder", "handle"], answer: 0, all_keywords: [
+                    { word: 'help', translation: '幫助', example: 'Can you help me?', example_translation: '你能幫我嗎？' },
+                    { word: 'hurt', translation: '受傷；疼痛', example: 'My leg hurts.', example_translation: '我的腳痛。' },
+                    { word: 'hinder', translation: '阻礙', example: 'Nothing can hinder us.', example_translation: '沒什麼能阻礙我們。' },
+                    { word: 'handle', translation: '處理', example: 'Handle with care.', example_translation: '小心輕放。' }
+                ]},
+                { type: 'reading', question: "He is a very ____ student; he always studies hard.", options: ["lazy", "diligent", "noisy", "fast"], answer: 1, all_keywords: [
+                    { word: 'lazy', translation: '懶惰的', example: 'Don\'t be lazy.', example_translation: '不要懶惰。' },
+                    { word: 'diligent', translation: '勤勉的', example: 'a diligent worker', example_translation: '一名勤奮的工人。' },
+                    { word: 'noisy', translation: '吵鬧的', example: 'a noisy room', example_translation: '一個吵鬧的房間。' },
+                    { word: 'fast', translation: '快的', example: 'a fast car', example_translation: '一輛快車。' }
+                ]},
+                { type: 'reading', question: "The noise ____ the entire neighborhood.", options: ["disturbed", "delivered", "destroyed", "discussed"], answer: 0, all_keywords: [
+                    { word: 'disturbed', translation: '打擾', example: 'The noise disturbed him.', example_translation: '噪音打擾了他。' },
+                    { word: 'delivered', translation: '運送', example: 'He delivered the mail.', example_translation: '他送了信。' },
+                    { word: 'destroyed', translation: '摧毀', example: 'The fire destroyed the house.', example_translation: '火災摧毀了房子。' },
+                    { word: 'discussed', translation: '討論', example: 'They discussed the plan.', example_translation: '他們討論了計畫。' }
+                ]},
+                { type: 'reading', question: "It is ____ to see a rainbow after the rain.", options: ["rare", "right", "common", "correct"], answer: 2, all_keywords: [
+                    { word: 'rare', translation: '稀有的', example: 'a rare bird', example_translation: '一隻稀有的鳥。' },
+                    { word: 'right', translation: '正確的；右邊', example: 'the right answer', example_translation: '正確答案。' },
+                    { word: 'common', translation: '常見的', example: 'a common mistake', example_translation: '一個常見的錯誤。' },
+                    { word: 'correct', translation: '正確的', example: 'Is this correct?', example_translation: '這正確嗎？' }
                 ]}
             ],
             'quiz2': [
@@ -292,8 +371,6 @@
         // --- Core Functions ---
         async function initializeAppFirebase() {
             try {
-                // 1. 環境設定偵測
-                // 優先使用由環境注入的 config (Canvas)，否則使用手動填寫的內容 (GitHub Pages)
                 const userProvidedConfig = {
                     apiKey: "AIzaSyDQSAW63lnKd3aCCiCt7pSmRa6ZPqOiIZI",
                     authDomain: "alcpt-f9d8d.firebaseapp.com",
@@ -307,13 +384,11 @@
                     ? JSON.parse(__firebase_config) 
                     : userProvidedConfig;
 
-                // 2. 初始化
                 app = initializeApp(config);
                 db = getFirestore(app);
                 auth = getAuth(app);
                 const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'github-ecl-app';
 
-                // 3. 匿名登入
                 await signInAnonymously(auth);
                 
                 onAuthStateChanged(auth, (user) => {
@@ -327,7 +402,7 @@
 
             } catch (error) {
                 console.error("Firebase Init Error:", error);
-                document.getElementById('loading-text').innerHTML = `載入失敗，請確認 Firebase 設定是否正確。<br><small>${error.message}</small>`;
+                document.getElementById('loading-text').innerHTML = `載入失敗，請確認 Firebase 設定。<br><small>${error.message}</small>`;
             }
         }
 
@@ -336,12 +411,22 @@
             const colRef = collection(db, 'artifacts', id, 'users', uid, 'favorites');
             firestoreUnsubscribe = onSnapshot(colRef, (snap) => {
                 favoriteKeywords = snap.docs.map(doc => doc.data());
+                // 如果複習視窗開著，即時更新
                 if (document.getElementById('favorites-modal').style.display === 'flex') showFavoritesModal();
-            }, (err) => console.error("Firestore Listen Error:", err));
+                // 如果測驗解析開著，即時更新愛心
+                const kwDisp = document.getElementById('keywords-display');
+                if (kwDisp && kwDisp.innerHTML !== '') {
+                    const currentQ = currentQuestions[currentQuestionIndex];
+                    if (currentQ) renderKeywords(currentQ.all_keywords);
+                }
+            });
         }
 
         function showScreen(id) {
-            document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+            document.querySelectorAll('.screen').forEach(s => {
+                s.style.display = 'none';
+                s.classList.remove('active-screen');
+            });
             const target = document.getElementById(id);
             if (target) {
                 target.style.display = 'flex';
@@ -403,12 +488,13 @@
             const ttsText = q.type === 'listening' ? q.question.split('(Narrator):')[1]?.trim() || q.question : q.question.replace('____', correctText);
             const escapedTTS = ttsText.replace(/'/g, "\\'").replace(/\n/g, ' ');
 
+            // 發音按鈕更顯眼
             document.getElementById('post-answer-display').innerHTML = `
                 <div class="p-4 bg-gray-900 rounded-xl border border-gray-700">
-                    <div class="flex justify-between items-start mb-2">
+                    <div class="flex justify-between items-center mb-3">
                          <p class="font-bold text-yellow-400">正確答案解答：</p>
-                         <button onclick="speak('${escapedTTS}')" class="text-blue-400 hover:text-blue-300">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M20 4a9 9 0 010 16M4 4a9 9 0 0116 0" /></svg>
+                         <button onclick="speak('${escapedTTS}')" class="speaker-btn" title="聽發音">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M20 4a9 9 0 010 16M4 4a9 9 0 0116 0" /></svg>
                          </button>
                     </div>
                     <p class="text-gray-300 italic mb-2">${q.type === 'listening' ? q.question.replace(/\n/g, '<br>') : q.question.replace('____', `<span class='text-yellow-400 font-bold underline'>${correctText}</span>`)}</p>
@@ -418,7 +504,7 @@
             `;
 
             const kwBtn = document.createElement('button');
-            kwBtn.className = 'bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 px-6 rounded-lg transition';
+            kwBtn.className = 'bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 px-6 rounded-lg transition shadow-lg';
             kwBtn.textContent = '查看全選項解析';
             kwBtn.onclick = () => renderKeywords(q.all_keywords);
             document.getElementById('post-answer-actions').appendChild(kwBtn);
@@ -429,23 +515,27 @@
 
         function renderKeywords(keywords) {
             if (!keywords) return;
-            let html = '<div class="space-y-3 mt-4">';
+            let html = '<div class="space-y-3 mt-4 animate-fade-in">';
             keywords.forEach(kw => {
                 const isFav = favoriteKeywords.some(f => f.word === kw.word);
                 const kwJSON = JSON.stringify(kw).replace(/'/g, "\\'");
                 html += `
-                    <div class="p-4 bg-gray-700 rounded-lg border border-gray-600 flex justify-between items-start">
+                    <div class="p-4 bg-gray-700 rounded-lg border border-gray-600 flex justify-between items-center shadow-md">
                         <div class="flex-grow">
-                            <div class="flex items-center space-x-2">
+                            <div class="flex items-center space-x-3">
                                 <span class="text-teal-300 font-bold text-lg">${kw.word}</span>
-                                <button onclick="speak('${kw.word.replace(/'/g, "\\'")}')" class="text-gray-400"><svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path d="M11 5L6 9H2v2h4l5 4V5z"/></svg></button>
-                                <span class="text-gray-300">${kw.translation}</span>
+                                <button onclick="speak('${kw.word.replace(/'/g, "\\'")}')" class="speaker-btn p-1 h-8 w-8" title="單字發音">
+                                    <svg fill="currentColor" viewBox="0 0 20 20"><path d="M11 5L6 9H2v2h4l5 4V5z"/></svg>
+                                </button>
+                                <span class="text-gray-300 font-medium">${kw.translation}</span>
                             </div>
                             <p class="text-xs text-gray-400 mt-1 italic">${kw.example}</p>
                             <p class="text-xs text-gray-500">${kw.example_translation}</p>
                         </div>
-                        <button onclick='toggleFavorite(${kwJSON})' class="ml-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ${isFav?'text-red-500':'text-gray-500'}" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"/></svg>
+                        <button onclick='toggleFavorite(${kwJSON})' class="ml-2 hover:scale-110 transition p-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 ${isFav?'text-red-500':'text-gray-500 opacity-50'}" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"/>
+                            </svg>
                         </button>
                     </div>
                 `;
@@ -456,12 +546,21 @@
 
         async function toggleFavorite(kw) {
             const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'github-ecl-app';
+            // 檔名/ID 安全化
             const docId = kw.word.replace(/[\/ \(\)']/g, '_');
             const docRef = doc(db, 'artifacts', currentAppId, 'users', userId, 'favorites', docId);
-            if (favoriteKeywords.some(f => f.word === kw.word)) {
-                await deleteDoc(docRef);
-            } else {
-                await setDoc(docRef, kw);
+            
+            const isAlreadyFav = favoriteKeywords.some(f => f.word === kw.word);
+            
+            try {
+                if (isAlreadyFav) {
+                    await deleteDoc(docRef);
+                } else {
+                    await setDoc(docRef, kw);
+                }
+                // renderKeywords 會由 loadFavoriteKeywords 的 onSnapshot 自動觸發重新渲染
+            } catch (err) {
+                console.error("收藏失敗:", err);
             }
         }
 
@@ -489,11 +588,11 @@
             if (isPassed) {
                 finalMsg += `<br><span class="text-green-300 font-bold">恭喜！您已達標。</span>`;
                 if (allPassed) {
-                    finalMsg += `<br><br><div class="p-4 bg-yellow-900 border border-yellow-500 rounded-lg text-yellow-200 font-bold">恭喜通過本日所有 ECL 練習！不要忘記到「我的最愛」區複習喔！</div>`;
+                    finalMsg += `<br><br><div class="p-4 bg-yellow-900 border border-yellow-500 rounded-lg text-yellow-200 font-bold shadow-xl">恭喜通過本日所有 ECL 練習！不要忘記到「我的最愛」區複習喔！</div>`;
                 }
                 playSound('success');
             } else {
-                finalMsg += `<br><span class="text-red-300">很遺憾，ECL 標準需達 80%。<br>請再測驗一次 加強練習！</span>`;
+                finalMsg += `<br><span class="text-red-300 font-bold">很遺憾，ECL 標準需達 80%。<br>請再測驗一次 加強練習！</span>`;
             }
             msgEl.innerHTML = finalMsg;
             document.getElementById('module-score').textContent = `${accuracy}%`;
@@ -542,7 +641,6 @@
             const updateBtn = (id, passed) => {
                 const btn = document.getElementById(id);
                 if (passed) {
-                    btn.classList.remove('bg-yellow-500', 'bg-cyan-500', 'bg-teal-500');
                     btn.className = `w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition duration-300`;
                     if (!btn.textContent.includes('(已通過)')) btn.textContent += ' (已通過)';
                 }
@@ -563,6 +661,7 @@
         }
 
         function speak(txt) {
+            if (!txt) return;
             window.speechSynthesis.cancel();
             const u = new SpeechSynthesisUtterance(txt);
             u.lang = 'en-US';
@@ -571,13 +670,16 @@
         }
 
         function playSound(type) {
-            if (type === 'correct') synth.triggerAttackRelease("C5", "8n");
-            else if (type === 'incorrect') synth.triggerAttackRelease("A3", "8n");
-            else if (type === 'success') {
-                synth.triggerAttackRelease("C4", "8n", Tone.now());
-                synth.triggerAttackRelease("E4", "8n", Tone.now() + 0.1);
-                synth.triggerAttackRelease("G4", "8n", Tone.now() + 0.2);
-            }
+            try {
+                if (type === 'correct') synth.triggerAttackRelease("C5", "8n");
+                else if (type === 'incorrect') synth.triggerAttackRelease("A3", "8n");
+                else if (type === 'success') {
+                    const now = Tone.now();
+                    synth.triggerAttackRelease("C4", "8n", now);
+                    synth.triggerAttackRelease("E4", "8n", now + 0.1);
+                    synth.triggerAttackRelease("G4", "8n", now + 0.2);
+                }
+            } catch(e) {}
         }
 
         function showFavoritesModal() {
@@ -585,15 +687,16 @@
             list.innerHTML = favoriteKeywords.length === 0 ? '<p class="text-gray-500 text-center py-10">尚無收藏單字</p>' : '';
             favoriteKeywords.forEach(kw => {
                 const item = document.createElement('div');
-                item.className = 'p-4 bg-gray-900 rounded-lg border border-gray-700 mb-2';
+                item.className = 'p-4 bg-gray-900 rounded-lg border border-gray-700 mb-2 flex justify-between items-center';
                 item.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <div>
+                    <div>
+                        <div class="flex items-center space-x-2">
                             <p class="text-teal-300 font-bold">${kw.word}</p>
-                            <p class="text-gray-400 text-sm">${kw.translation}</p>
+                            <button onclick="speak('${kw.word.replace(/'/g, "\\'")}')" class="text-blue-400"><svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path d="M11 5L6 9H2v2h4l5 4V5z"/></svg></button>
                         </div>
-                        <button onclick='toggleFavorite(${JSON.stringify(kw).replace(/'/g, "\\'")})' class="text-red-500 font-bold">移除</button>
-                    </div>`;
+                        <p class="text-gray-400 text-sm">${kw.translation}</p>
+                    </div>
+                    <button onclick='toggleFavorite(${JSON.stringify(kw).replace(/'/g, "\\'")})' class="text-red-500 font-bold px-3 py-1 bg-red-900 bg-opacity-30 rounded hover:bg-opacity-50">移除</button>`;
                 list.appendChild(item);
             });
             document.getElementById('favorites-modal').style.display = 'flex';
@@ -602,7 +705,10 @@
 
         function hideFavoritesModal() {
             document.getElementById('favorites-card').classList.remove('active');
-            setTimeout(() => { document.getElementById('favorites-modal').style.display = 'none'; isTestPaused = false; }, 300);
+            setTimeout(() => { 
+                document.getElementById('favorites-modal').style.display = 'none'; 
+                isTestPaused = false; 
+            }, 300);
         }
 
         // Global exports
@@ -619,7 +725,7 @@
         window.cancelExit = cancelExit;
         window.confirmExit = confirmExit;
 
-        // 啟動 Firebase
+        // 啟動應用
         window.onload = initializeAppFirebase;
     </script>
 </body>
